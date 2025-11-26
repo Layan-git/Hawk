@@ -20,32 +20,24 @@ public class GameManger {
         GAME_LOST
     }
 
-    // --------------------------
-    // Configurable scoring rules
-    // --------------------------
     private static final int SAFE_REVEAL_POINTS = 10;
     private static final int MINE_PENALTY_POINTS = -50;
 
     private Difficulty difficulty = null;
     private Board board;
 
-    // score + lives live *inside* GameManager now
     private int score;
     private int lives;
     private int maxLives;
 
     private GameStatus status;
 
-    // --------------------------
-    // Constructor
-    // --------------------------
     public void GameManager(Board.Difficulty difficulty) {
         this.difficulty = difficulty;
         configureLivesByDifficulty(difficulty);
         startNewGame();
     }
 
-    // starting lives per difficulty – change numbers as needed
     private void configureLivesByDifficulty(Board.Difficulty difficulty) {
         switch (difficulty) {
             case EASY -> maxLives = 10;
@@ -54,18 +46,27 @@ public class GameManger {
         }
     }
 
-    // --------------------------
-    // New game
-    // --------------------------
     public void startNewGame() {
         this.board = new Board(difficulty);
         this.score = 0;
         this.lives = maxLives;
         this.status = GameStatus.RUNNING;
     }
+    
+    // --------------------------
+    // Public state manipulators
+    // --------------------------
+    public void processMineHit() {
+        loseLife();
+        addPoints(MINE_PENALTY_POINTS);
+    }
+
+    public void processSafeReveal() {
+        addPoints(SAFE_REVEAL_POINTS);
+    }
 
     // --------------------------
-    // Getters for GUI/controller
+    // Getters
     // --------------------------
     public Board getBoard()       { return board; }
     public int getScore()         { return score; }
@@ -73,11 +74,7 @@ public class GameManger {
     public int getMaxLives()      { return maxLives; }
     public GameStatus getStatus() { return status; }
 
-    // --------------------------
-    // Reveal (left click)
-    // --------------------------
     public RevealOutcome handleReveal(int row, int col) {
-
         if (status != GameStatus.RUNNING) {
             return RevealOutcome.INVALID;
         }
@@ -91,11 +88,9 @@ public class GameManger {
             return RevealOutcome.ALREADY_REVEALED;
         }
 
-        // board handles the actual reveal & cascade
         board.reveal(row, col);
 
         if (cell.isMine()) {
-            // stepped on a mine → lose life + penalty
             loseLife();
             addPoints(MINE_PENALTY_POINTS);
 
@@ -106,7 +101,6 @@ public class GameManger {
             return RevealOutcome.MINE;
 
         } else {
-            // safe cell (number or empty)
             addPoints(SAFE_REVEAL_POINTS);
 
             if (checkWinCondition()) {
@@ -117,18 +111,11 @@ public class GameManger {
         }
     }
 
-    // --------------------------
-    // Flag (right click)
-    // --------------------------
     public void handleToggleFlag(int row, int col) {
         if (status != GameStatus.RUNNING) return;
         board.toggleFlag(row, col);
-        // later you can also change score based on correct / wrong flags
     }
 
-    // --------------------------
-    // Internal helpers
-    // --------------------------
     private void addPoints(int points) {
         this.score += points;
     }
@@ -139,7 +126,6 @@ public class GameManger {
         }
     }
 
-    // all non-mine cells are revealed → win
     private boolean checkWinCondition() {
         for (int r = 0; r < board.getRows(); r++) {
             for (int c = 0; c < board.getCols(); c++) {

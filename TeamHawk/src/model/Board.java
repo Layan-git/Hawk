@@ -10,26 +10,24 @@ public class Board {
         HARD
     }
 
+    private Difficulty difficulty;
     private int rows;
     private int cols;
     private int totalMines;
-
     private Cell[][] cells;
 
     public Board(Difficulty difficulty) {
+        this.difficulty = difficulty;
         configureDifficulty(difficulty);
 
         cells = new Cell[rows][cols];
         initEmptyBoard();
         placeMinesRandomly();
+        placeSpecialCells();
         calculateNumbers();
     }
 
-    // -------------------------------------------------------------
-    // Difficulty configuration according to assignment (Iteration 1)
-    // -------------------------------------------------------------
     private void configureDifficulty(Difficulty difficulty) {
-
         switch (difficulty) {
             case EASY:
                 rows = 9;
@@ -51,9 +49,6 @@ public class Board {
         }
     }
 
-    // -------------------------------------------------------------
-    // Basic setup
-    // -------------------------------------------------------------
     private void initEmptyBoard() {
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -62,9 +57,6 @@ public class Board {
         }
     }
 
-    // -------------------------------------------------------------
-    // Place mines randomly
-    // -------------------------------------------------------------
     private void placeMinesRandomly() {
         Random random = new Random();
         int count = 0;
@@ -80,14 +72,60 @@ public class Board {
         }
     }
 
-    // -------------------------------------------------------------
-    // Calculate neighbor numbers (1–8)
-    // -------------------------------------------------------------
+    private void placeSpecialCells() {
+        Random random = new Random();
+        
+        int questionCells = 0;
+        int surpriseCells = 0;
+        
+        switch (difficulty) {
+            case EASY:
+                questionCells = 6;
+                surpriseCells = 2;
+                break;
+            case MEDIUM:
+                questionCells = 7;
+                surpriseCells = 3;
+                break;
+            case HARD:
+                questionCells = 11;
+                surpriseCells = 4;
+                break;
+        }
+        
+        int qCount = 0;
+        while (qCount < questionCells) {
+            int r = random.nextInt(rows);
+            int c = random.nextInt(cols);
+            
+            if (!cells[r][c].isMine() && cells[r][c].getType() == Cell.CellType.EMPTY) {
+                cells[r][c].setType(Cell.CellType.QUESTION);
+                qCount++;
+            }
+        }
+        
+        int sCount = 0;
+        while (sCount < surpriseCells) {
+            int r = random.nextInt(rows);
+            int c = random.nextInt(cols);
+            
+            if (!cells[r][c].isMine() 
+                    && !cells[r][c].isQuestion() 
+                    && cells[r][c].getType() == Cell.CellType.EMPTY) {
+                cells[r][c].setType(Cell.CellType.SURPRISE);
+                sCount++;
+            }
+        }
+    }
+
     private void calculateNumbers() {
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-
-                if (cells[r][c].isMine()) continue;
+                if (cells[r][c].isMine() 
+                        || cells[r][c].isQuestion() 
+                        || cells[r][c].isSurprise()) {
+                    continue;
+                }
 
                 int count = countNeighborMines(r, c);
                 cells[r][c].setNeighborMines(count);
@@ -100,7 +138,6 @@ public class Board {
 
         for (int dr = -1; dr <= 1; dr++) {
             for (int dc = -1; dc <= 1; dc++) {
-
                 if (dr == 0 && dc == 0) continue;
 
                 int nr = row + dr;
@@ -114,33 +151,24 @@ public class Board {
 
         return count;
     }
-    // if the cords are inside the game board 
+
     private boolean isInside(int r, int c) {
         return r >= 0 && r < rows && c >= 0 && c < cols;
     }
 
-    // -------------------------------------------------------------
-    // Reveal cell
-    // -------------------------------------------------------------
     public void reveal(int row, int col) {
-
         Cell cell = cells[row][col];
 
         if (cell.isRevealed() || cell.isFlagged()) return;
 
         cell.setState(Cell.CellState.REVEALED);
 
-        // If empty, cascade
         if (cell.getType() == Cell.CellType.EMPTY) {
             cascadeReveal(row, col);
         }
     }
 
-    // -------------------------------------------------------------
-    // Cascade reveal (classic Minesweeper flood fill)
-    // -------------------------------------------------------------
     private void cascadeReveal(int row, int col) {
-
         Queue<Cell> queue = new LinkedList<>();
         queue.add(cells[row][col]);
 
@@ -149,10 +177,8 @@ public class Board {
             int r = current.getRow();
             int c = current.getCol();
             
-            // loop through 3x3 matrix around the current cell 
             for (int dr = -1; dr <= 1; dr++) {
                 for (int dc = -1; dc <= 1; dc++) {
-
                     if (dr == 0 && dc == 0) continue;
 
                     int nr = r + dr;
@@ -162,12 +188,16 @@ public class Board {
 
                     Cell neighbor = cells[nr][nc];
 
-                    // Skip flagged or revealed or mines
-                    if (neighbor.isRevealed() || neighbor.isFlagged() || neighbor.isMine()) continue;
+                    if (neighbor.isRevealed() 
+                            || neighbor.isFlagged() 
+                            || neighbor.isMine() 
+                            || neighbor.isQuestion() 
+                            || neighbor.isSurprise()) {
+                        continue;
+                    }
 
                     neighbor.setState(Cell.CellState.REVEALED);
 
-                    // Continue expanding empty cells
                     if (neighbor.getType() == Cell.CellType.EMPTY) {
                         queue.add(neighbor);
                     }
@@ -176,9 +206,6 @@ public class Board {
         }
     }
 
-    // -------------------------------------------------------------
-    // Flagging
-    // -------------------------------------------------------------
     public void toggleFlag(int row, int col) {
         Cell cell = cells[row][col];
 
@@ -191,10 +218,32 @@ public class Board {
         }
     }
 
-    // -------------------------------------------------------------
-    // Basic Getters
-    // -------------------------------------------------------------
     public int getRows() { return rows; }
     public int getCols() { return cols; }
     public Cell getCell(int r, int c) { return cells[r][c]; }
+    public Difficulty getDifficulty() { return difficulty; }
+    
+    /**
+     * Getter for the total number of initial mines.
+     */
+    public int getTotalMines() {
+        return totalMines;
+    }
+
+    /**
+     * Calculates the number of mines that are still hidden (not revealed).
+     * This is used to update the "Mines Left" counter when a mine is hit.
+     */
+    public int getHiddenMineCount() {
+        int count = 0;
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                // If it is a mine and it is NOT revealed, it is still "hidden/left"
+                if (cells[r][c].isMine() && !cells[r][c].isRevealed()) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
 }
