@@ -7,6 +7,7 @@ import model.GameManger;
 import view.MainMenu;
 import view.GameSetup;
 import view.GameBoardView;
+import javax.swing.JOptionPane;
 
 public class Main {
     
@@ -34,7 +35,6 @@ public class Main {
     private GameSetup gameSetup;
     private GameBoardView gameBoardView;
     
-    // Game state
     private GameManger gameManager;
     private Board board1;
     private Board board2;
@@ -80,33 +80,61 @@ public class Main {
             
             // Reveal the cell
             currentBoard.reveal(row, col);
-            
-            // Update the view
             updateBoardDisplay(playerNum, currentBoard);
             
-            // Handle different cell types
             if (cell.isMine()) {
+                // 1. Process damage
+                gameManager.processMineHit();
+                
+                // 2. Update view stats
+                gameBoardView.updateLives(gameManager.getLives());
+                gameBoardView.updateScore(gameManager.getScore());
+                
+                // 3. Update Mines Left Counter (Decrements because a mine was revealed)
+                gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                
+                // 4. CHECK FOR GAME OVER
+                if (gameManager.getLives() <= 0) {
+                    // Show standard message, then the Game Over popup
+                    gameBoardView.updateStatus("Game Over!");
+                    
+                    // This popup blocks until OK is pressed
+                    JOptionPane.showMessageDialog(null, 
+                        "Game Over! You ran out of lives.", 
+                        "Game Over", 
+                        JOptionPane.ERROR_MESSAGE);
+                    
+                    // Return to menu immediately after OK
+                    quitToMenu();
+                    return; // Stop execution here
+                }
+                
                 gameBoardView.updateStatus("Hit a mine! -1 Life");
                 gameBoardView.showMessage("Mine!", "You hit a MINE! Lost 1 life.");
+                
             } else if (cell.isQuestion()) {
+                gameManager.processSafeReveal();
+                gameBoardView.updateScore(gameManager.getScore());
                 gameBoardView.updateStatus("Question Cell! Answer to earn points.");
                 gameBoardView.showMessage("Question!", "You found a QUESTION cell!");
             } else if (cell.isSurprise()) {
+                gameManager.processSafeReveal();
+                gameBoardView.updateScore(gameManager.getScore());
                 gameBoardView.updateStatus("Surprise Cell! Special effect activated.");
                 gameBoardView.showMessage("Surprise!", "You found a SURPRISE cell!");
             } else {
+                gameManager.processSafeReveal();
+                gameBoardView.updateScore(gameManager.getScore());
                 gameBoardView.updateStatus("Safe cell revealed!");
             }
             
-            // Switch turn
+            // Switch turn only if game is not over
             switchTurn();
         }
         
         @Override
         public void onCellRightClick(int playerNum, int row, int col) {
-            if (playerNum != currentPlayer) {
-                return;
-            }
+            if (playerNum != currentPlayer) return;
             
             Board currentBoard = (playerNum == 1) ? board1 : board2;
             currentBoard.toggleFlag(row, col);
@@ -115,7 +143,6 @@ public class Main {
             String label = cell.getDisplayLabel();
             gameBoardView.updateCell(playerNum, row, col, cell, label);
             
-            // Switch turn after flagging
             switchTurn();
         }
         
@@ -151,11 +178,9 @@ public class Main {
     private void startGameBoard(String p1, String p2, Difficulty difficulty) {
         if (gameSetup != null) gameSetup.close();
         
-        // Initialize game logic
         gameManager = new GameManger();
         gameManager.GameManager(difficulty);
         
-        // Create two separate boards for each player
         board1 = new Board(difficulty);
         board2 = new Board(difficulty);
         
@@ -165,18 +190,21 @@ public class Main {
             case HARD -> 16;
         };
         
-        // Create and show the game board view
         gameBoardView = new GameBoardView(boardController, p1, p2, boardSize);
         
-        // Initialize both boards
         updateBoardDisplay(1, board1);
         updateBoardDisplay(2, board2);
+        
+        // Initialize Mine Counts
+        gameBoardView.updateMinesLeft(1, board1.getTotalMines());
+        gameBoardView.updateMinesLeft(2, board2.getTotalMines());
         
         currentPlayer = 1;
         gameBoardView.updateCurrentTurn(p1);
         gameBoardView.updateScore(0);
         gameBoardView.updateLives(gameManager.getMaxLives());
         gameBoardView.updateStatus("Game Started!");
+        gameBoardView.updateTurnVisuals(currentPlayer);
         
         gameBoardView.show();
     }
@@ -195,5 +223,6 @@ public class Main {
         currentPlayer = (currentPlayer == 1) ? 2 : 1;
         String currentPlayerName = (currentPlayer == 1) ? player1Name : player2Name;
         gameBoardView.updateCurrentTurn(currentPlayerName);
+        gameBoardView.updateTurnVisuals(currentPlayer);
     }
 }
