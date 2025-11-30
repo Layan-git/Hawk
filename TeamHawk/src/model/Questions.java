@@ -29,4 +29,68 @@ public class Questions {
         System.out.println("   The Answer Is : "+correctAnswer+".");
         System.out.println("------------------------------------------------");
     }
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getText() {
+		return text;
+	}
+
+	public void setText(String text) {
+		this.text = text;
+	}
+
+	public int getDifficulty() {
+		return difficulty;
+	}
+
+	public void setDifficulty(int difficulty) {
+		this.difficulty = difficulty;
+	}
+
+	public String getOptA() {
+		return optA;
+	}
+
+	public void setOptA(String optA) {
+		this.optA = optA;
+	}
+
+	public String getOptB() {
+		return optB;
+	}
+
+	public void setOptB(String optB) {
+		this.optB = optB;
+	}
+
+	public String getOptC() {
+		return optC;
+	}
+
+	public void setOptC(String optC) {
+		this.optC = optC;
+	}
+
+	public String getOptD() {
+		return optD;
+	}
+
+	public void setOptD(String optD) {
+		this.optD = optD;
+	}
+
+	public String getCorrectAnswer() {
+		return correctAnswer;
+	}
+
+	public void setCorrectAnswer(String correctAnswer) {
+		this.correctAnswer = correctAnswer;
+	}
 }

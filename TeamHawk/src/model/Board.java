@@ -188,16 +188,21 @@ public class Board {
 
                     Cell neighbor = cells[nr][nc];
 
-                    if (neighbor.isRevealed() 
-                            || neighbor.isFlagged() 
-                            || neighbor.isMine() 
-                            || neighbor.isQuestion() 
-                            || neighbor.isSurprise()) {
+                    // אם התא כבר נחשף או מסומן – דלג
+                    if (neighbor.isRevealed() || neighbor.isFlagged()) continue;
+
+                    // אם זה מוקש – לא לחשוף BUT כן לאפשר פיל לעבור מסביב
+                    if (neighbor.isMine()) continue;
+
+                    // אם זה תא שאלה או הפתעה – לא לחשוף ולא להוסיף לתור
+                    if (neighbor.isQuestion() || neighbor.isSurprise()) {
                         continue;
                     }
 
+                    // חושפים שכן
                     neighbor.setState(Cell.CellState.REVEALED);
 
+                    // אם גם השכן ריק – מוסיפים לתור
                     if (neighbor.getType() == Cell.CellType.EMPTY) {
                         queue.add(neighbor);
                     }
@@ -205,6 +210,8 @@ public class Board {
             }
         }
     }
+
+    
 
     public void toggleFlag(int row, int col) {
         Cell cell = cells[row][col];

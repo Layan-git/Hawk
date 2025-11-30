@@ -77,28 +77,27 @@ public class GameSetup {
         card.setLayout(null);
         bg.add(card);
         
-        JLabel hardLabel = new JLabel("9X9 - 10 Bombs other");
-        hardLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        hardLabel.setForeground(Color.WHITE);
-        hardLabel.setBounds(404, 402, 160, 12);
-        card.add(hardLabel);
-        
-        JLabel medLabel = new JLabel("9X9 - 10 Bombs other");
-        medLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        medLabel.setForeground(Color.WHITE);
-        medLabel.setBounds(230, 402, 160, 12);
-        card.add(medLabel);
-        
-        JLabel easyLabel = new JLabel("9X9 - 10 Bombs");
-        easyLabel.setForeground(new Color(255, 255, 255));
+
+     // Difficulty descriptions – accurate per your game rules
+        JLabel easyLabel = new JLabel("Easy: 9×9 board");
+        easyLabel.setForeground(Color.WHITE);
         easyLabel.setHorizontalAlignment(SwingConstants.CENTER);
         easyLabel.setBounds(60, 402, 160, 12);
         card.add(easyLabel);
 
-        JLabel iconLabel = new JLabel(new ImageIcon(MainMenu.class.getResource("/resources/bomb.png")));
-        iconLabel.setBounds(284, 24, 56, 56);
-        card.add(iconLabel);
+        JLabel medLabel = new JLabel("Medium: 13×13 board");
+        medLabel.setForeground(Color.WHITE);
+        medLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        medLabel.setBounds(230, 402, 160, 12);
+        card.add(medLabel);
 
+        JLabel hardLabel = new JLabel("Hard: 16×16 board");
+        hardLabel.setForeground(Color.WHITE);
+        hardLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        hardLabel.setBounds(404, 402, 160, 12);
+        card.add(hardLabel);
+       
+        
         JLabel title = new JLabel("Game Setup");
         title.setHorizontalAlignment(SwingConstants.CENTER);
         title.setForeground(new Color(0, 200, 170));

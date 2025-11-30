@@ -21,8 +21,26 @@ public class Cell {
     private CellType type;
     private CellState state;
     private int neighborMines; // 0–8
+    private boolean readyForQuestion = false;
+    private boolean readyForSurprise = false;
     
-    public Cell(int row, int col) {
+    public boolean isReadyForQuestion() {
+		return readyForQuestion;
+	}
+
+	public void setReadyForQuestion(boolean readyForQuestion) {
+		this.readyForQuestion = readyForQuestion;
+	}
+
+	public boolean isReadyForSurprise() {
+		return readyForSurprise;
+	}
+
+	public void setReadyForSurprise(boolean readyForSurprise) {
+		this.readyForSurprise = readyForSurprise;
+	}
+
+	public Cell(int row, int col) {
         this.row = row;
         this.col = col;
         this.type = CellType.EMPTY; // default, Board will override
@@ -139,6 +157,7 @@ public class Cell {
     public boolean isSafe() {
         return type != CellType.MINE;
     }
+    
     
     @Override
     public String toString() {

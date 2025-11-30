@@ -11,19 +11,7 @@ public class GameManger {
         LOST
     }
 
-    public enum RevealOutcome {
-        INVALID,
-        ALREADY_REVEALED,
-        SAFE,
-        MINE,
-        GAME_WON,
-        GAME_LOST
-    }
-
-    private static final int SAFE_REVEAL_POINTS = 10;
-    private static final int MINE_PENALTY_POINTS = -50;
-
-    private Difficulty difficulty = null;
+    private Difficulty difficulty;
     private Board board;
 
     private int score;
@@ -32,48 +20,91 @@ public class GameManger {
 
     private GameStatus status;
 
-    public void GameManager(Board.Difficulty difficulty) {
+    // -------------------------------
+    // Constructor
+    // -------------------------------
+    public void GameManager(Difficulty difficulty) {
         this.difficulty = difficulty;
         configureLivesByDifficulty(difficulty);
         startNewGame();
     }
 
-    private void configureLivesByDifficulty(Board.Difficulty difficulty) {
+    // -------------------------------
+    // Lives by difficulty
+    // -------------------------------
+    private void configureLivesByDifficulty(Difficulty difficulty) {
         switch (difficulty) {
-            case EASY -> maxLives = 10;
+            case EASY  -> maxLives = 10;
             case MEDIUM -> maxLives = 8;
-            case HARD -> maxLives = 6;
+            case HARD  -> maxLives = 6;
         }
     }
 
+    // -------------------------------
+    // Start new game
+    // -------------------------------
     public void startNewGame() {
         this.board = new Board(difficulty);
         this.score = 0;
         this.lives = maxLives;
         this.status = GameStatus.RUNNING;
     }
-    
-    // --------------------------
-    // Public state manipulators
-    // --------------------------
+
+    // -------------------------------
+    // Mine hit (no points — only life loss)
+    // -------------------------------
     public void processMineHit() {
         loseLife();
-        addPoints(MINE_PENALTY_POINTS);
     }
 
-    public void processSafeReveal() {
-        addPoints(SAFE_REVEAL_POINTS);
+    // -------------------------------
+    // Point effects for Surprise/Question
+    // -------------------------------
+    public int getGoodEffectPoints() {
+        return switch (difficulty) {
+            case EASY -> 5;     // +5
+            case MEDIUM -> 7;   // +7
+            case HARD -> 12;    // +12
+        };
+    }
+    
+    public int getBaseOpenCost() {
+        return switch (difficulty) {
+            case EASY -> 5;
+            case MEDIUM -> 8;
+            case HARD -> 12;
+        };
     }
 
-    // --------------------------
-    // Getters
-    // --------------------------
-    public Board getBoard()       { return board; }
-    public int getScore()         { return score; }
-    public int getLives()         { return lives; }
-    public int getMaxLives()      { return maxLives; }
-    public GameStatus getStatus() { return status; }
+    public void applyOpenCost() {
+        addPoints(getBaseOpenCost() + 1); // +1 על פתיחה
+    }
 
+    public int getBadEffectPoints() {
+        return switch (difficulty) {
+            case EASY -> -8;     // -8
+            case MEDIUM -> -12;  // -12
+            case HARD -> -16;    // -16
+        };
+    }
+
+    public void applyPositiveEffect() {
+        addPoints(getGoodEffectPoints());
+    }
+
+    public void applyNegativeEffect() {
+        addPoints(getBadEffectPoints());
+    }
+    
+ // +1 point for safe cells (empty or number)
+    public void awardSafeCellPoint() {
+        addPoints(1);
+    }
+
+
+    // -------------------------------
+    // Reveal handling — SAFE logic is NOT used yet (iteration 2)
+    // -------------------------------
     public RevealOutcome handleReveal(int row, int col) {
         if (status != GameStatus.RUNNING) {
             return RevealOutcome.INVALID;
@@ -90,33 +121,30 @@ public class GameManger {
 
         board.reveal(row, col);
 
+        // hit mine
         if (cell.isMine()) {
             loseLife();
-            addPoints(MINE_PENALTY_POINTS);
 
             if (lives <= 0) {
                 status = GameStatus.LOST;
                 return RevealOutcome.GAME_LOST;
             }
             return RevealOutcome.MINE;
-
-        } else {
-            addPoints(SAFE_REVEAL_POINTS);
-
-            if (checkWinCondition()) {
-                status = GameStatus.WON;
-                return RevealOutcome.GAME_WON;
-            }
-            return RevealOutcome.SAFE;
         }
+
+        // SAFE reveal (points will be added in iteration 2 only)
+        if (checkWinCondition()) {
+            status = GameStatus.WON;
+            return RevealOutcome.GAME_WON;
+        }
+
+        return RevealOutcome.SAFE;
     }
 
-    public void handleToggleFlag(int row, int col) {
-        if (status != GameStatus.RUNNING) return;
-        board.toggleFlag(row, col);
-    }
-
-    private void addPoints(int points) {
+    // -------------------------------
+    // Add/remove points & lives
+    // -------------------------------
+    public void addPoints(int points) {
         this.score += points;
     }
 
@@ -136,5 +164,23 @@ public class GameManger {
             }
         }
         return true;
+    }
+
+    // -------------------------------
+    // Getters
+    // -------------------------------
+    public Board getBoard()       { return board; }
+    public int getScore()         { return score; }
+    public int getLives()         { return lives; }
+    public int getMaxLives()      { return maxLives; }
+    public GameStatus getStatus() { return status; }
+
+    public enum RevealOutcome {
+        INVALID,
+        ALREADY_REVEALED,
+        SAFE,
+        MINE,
+        GAME_WON,
+        GAME_LOST
     }
 }
