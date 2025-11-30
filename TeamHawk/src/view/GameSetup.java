@@ -29,6 +29,7 @@ public class GameSetup {
     private JRadioButton mediumBtn;
     private JRadioButton hardBtn;
 
+    // this screen only collects names + difficulty, then notifies controller
     public GameSetup(GameSetupController controller) {
         this.controller = controller;
         initialize();
@@ -46,6 +47,7 @@ public class GameSetup {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(null);
 
+        // background panel with gradient (visual only)
         JPanel bg = new JPanel() {
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -61,6 +63,7 @@ public class GameSetup {
         bg.setLayout(null);
         frame.setContentPane(bg);
 
+        // main card in the center where we put all setup controls
         JPanel card = new JPanel() {
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -77,28 +80,25 @@ public class GameSetup {
         card.setLayout(null);
         bg.add(card);
         
-        JLabel hardLabel = new JLabel("9X9 - 10 Bombs other");
-        hardLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        hardLabel.setForeground(Color.WHITE);
-        hardLabel.setBounds(404, 402, 160, 12);
-        card.add(hardLabel);
-        
-        JLabel medLabel = new JLabel("9X9 - 10 Bombs other");
-        medLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        medLabel.setForeground(Color.WHITE);
-        medLabel.setBounds(230, 402, 160, 12);
-        card.add(medLabel);
-        
-        JLabel easyLabel = new JLabel("9X9 - 10 Bombs");
-        easyLabel.setForeground(new Color(255, 255, 255));
+        // difficulty descriptions so the player understands each option
+        JLabel easyLabel = new JLabel("9×9 board : 10 Bombs");
+        easyLabel.setForeground(Color.WHITE);
         easyLabel.setHorizontalAlignment(SwingConstants.CENTER);
         easyLabel.setBounds(60, 402, 160, 12);
         card.add(easyLabel);
 
-        JLabel iconLabel = new JLabel(new ImageIcon(MainMenu.class.getResource("/resources/bomb.png")));
-        iconLabel.setBounds(284, 24, 56, 56);
-        card.add(iconLabel);
+        JLabel medLabel = new JLabel("13×13 board : 26 Bombs");
+        medLabel.setForeground(Color.WHITE);
+        medLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        medLabel.setBounds(230, 402, 160, 12);
+        card.add(medLabel);
 
+        JLabel hardLabel = new JLabel("16×16 board : 44 Bombs");
+        hardLabel.setForeground(Color.WHITE);
+        hardLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        hardLabel.setBounds(404, 402, 160, 12);
+        card.add(hardLabel);
+       
         JLabel title = new JLabel("Game Setup");
         title.setHorizontalAlignment(SwingConstants.CENTER);
         title.setForeground(new Color(0, 200, 170));
@@ -118,6 +118,7 @@ public class GameSetup {
         p1.setBounds(60, 170, 200, 20);
         card.add(p1);
 
+        // player 1 name input, with simple placeholder behavior
         player1Field = new JTextField("");
         player1Field.setBounds(60, 195, 504, 36);
         player1Field.setOpaque(false);
@@ -126,12 +127,14 @@ public class GameSetup {
         player1Field.setCaretColor(new Color(220, 235, 230));
         player1Field.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent e) {
+                // clear placeholder on focus
                 if (player1Field.getText().equals(" Enter Player 1 username")) {
                     player1Field.setText("");
                     player1Field.setForeground(new Color(220, 235, 230));
                 }
             }
             public void focusLost(java.awt.event.FocusEvent e) {
+                // restore placeholder if left empty
                 if (player1Field.getText().equals("")) {
                     player1Field.setText(" Enter Player 1 username");
                     player1Field.setForeground(new Color(140, 160, 160));
@@ -145,6 +148,7 @@ public class GameSetup {
         p2.setBounds(60, 240, 200, 20);
         card.add(p2);
 
+        // player 2 name input, same placeholder logic
         player2Field = new JTextField("");
         player2Field.setBounds(60, 265, 504, 36);
         player2Field.setOpaque(false);
@@ -172,6 +176,7 @@ public class GameSetup {
         diffLbl.setBounds(60, 312, 200, 20);
         card.add(diffLbl);
 
+        // radio buttons let us pick exactly one difficulty
         ButtonGroup grp = new ButtonGroup();
         easyBtn = new JRadioButton("Easy");
         easyBtn.setHorizontalAlignment(SwingConstants.CENTER);
@@ -203,14 +208,16 @@ public class GameSetup {
         card.add(easyBtn);
         card.add(mediumBtn);
         card.add(hardBtn);
-        mediumBtn.setSelected(true);
+        mediumBtn.setSelected(true);  // default difficulty
 
+        // cancel just goes back to main menu via controller
         JButton cancelBtn = new JButton("Cancel");
         styleTextOnly(cancelBtn);
         cancelBtn.setBounds(60, 440, 120, 36);
         cancelBtn.addActionListener(e -> controller.backToMenu());
         card.add(cancelBtn);
 
+        // start game collects fields and chosen difficulty and calls controller
         JButton startBtn = new JButton("Start Game");
         styleTextOnly(startBtn);
         startBtn.setBounds(444, 440, 120, 36);
@@ -221,12 +228,14 @@ public class GameSetup {
         card.add(startBtn);
     }
 
+    // convert selected radio button into your Board.Difficulty enum
     private model.Board.Difficulty selectedDifficulty() {
         if (easyBtn.isSelected()) return model.Board.Difficulty.EASY;
         if (hardBtn.isSelected()) return model.Board.Difficulty.HARD;
         return model.Board.Difficulty.MEDIUM;
     }
 
+    // shared style for text-only buttons at the bottom
     private void styleTextOnly(JButton b) {
         b.setForeground(new Color(220, 235, 230));
         b.setFont(new Font("Tahoma", Font.PLAIN, 16));
