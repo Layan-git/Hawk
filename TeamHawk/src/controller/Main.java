@@ -51,6 +51,10 @@ public class Main {
     private int lastQuestionPlayer = -1;
     private int lastQuestionRow = -1;
     private int lastQuestionCol = -1;
+    
+ // question difficulty chosen by player: 1 = Easy, 2 = Medium, 3 = Hard, 4 = Advanced
+    private int currentQuestionDifficulty = 1;
+
 
     // ---------------- Controllers -------------------
 
@@ -228,35 +232,37 @@ public class Main {
             }
 
             if (addingFlag) {
-                // we are *attempting* to flag a hidden cell
-
-                // apply scoring rules first (same as before)
+                // scoring for placing a flag
                 switch (cell.getType()) {
                     case NUMBER -> gameManager.addPoints(-3);
                     case EMPTY -> gameManager.addPoints(-3);
                     case SURPRISE -> gameManager.addPoints(-3);
                     case QUESTION -> gameManager.addPoints(-3);
-                    case MINE -> gameManager.addPoints(+1);
+                    case MINE -> {
+                        // no fixed +1 here anymore
+                        // reward is handled by gainLifeOrPoints() below
+                    }
                 }
 
                 if (cell.isMine()) {
-                    // CORRECT FLAG ON A MINE:
-                    // reveal without cascade and keep it revealed
+                    // reward: if lives < max -> +1 life, else +open-cost points
+                    gameManager.gainLifeOrPoints();
+
+                    // update lives on UI since they may have changed
+                    gameBoardView.updateLives(gameManager.getLives());
+
+                    // reveal mine (no cascade) and update mines-left
                     cell.setState(CellState.REVEALED);
-                    // update mines left after this mine is no longer hidden
                     gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
                 } else {
-                    // WRONG FLAG:
-                    // player loses score (already applied above),
-                    // cell stays hidden and DOES NOT become flagged
+                    // wrong flag: cell stays hidden (no flag)
                     cell.setState(CellState.HIDDEN);
                 }
-
             } else {
-                // removing an existing flag (cell is currently FLAGGED)
-                // we do not change score, just hide it again
+                // removing a flag: just hide, no score change
                 cell.setState(CellState.HIDDEN);
             }
+
 
             // update score label
             gameBoardView.updateScore(gameManager.getScore());
@@ -450,7 +456,7 @@ public class Main {
             lastQuestionRow = row;
             lastQuestionCol = col;
 
-            openQuestionDialog(playerNum);
+            showQuestionDifficultyDialog(playerNum);
         });
 
         dialog.add(passBtn);
@@ -600,4 +606,56 @@ public class Main {
         // after handling the question we pass the turn to the other player
         switchTurn();
     }
+ // First ask the player to pick question difficulty, then show the actual question
+    private void showQuestionDifficultyDialog(int playerNum) {
+        JDialog dialog = new JDialog();
+        dialog.setTitle("Select Question Difficulty");
+        dialog.setModal(true);
+        dialog.setSize(350, 220);
+        dialog.setLocationRelativeTo(null);
+        dialog.setLayout(new GridLayout(5, 1));
+
+        JLabel msg = new JLabel(
+                "<html>Select a difficulty for your question:<br>"
+                        + "Easy, Medium, Hard, or Advanced.</html>",
+                SwingConstants.CENTER);
+        dialog.add(msg);
+
+        JButton easyBtn = new JButton("Easy");
+        JButton mediumBtn = new JButton("Medium");
+        JButton hardBtn = new JButton("Hard");
+        JButton advancedBtn = new JButton("Advanced");
+
+        easyBtn.addActionListener(e -> {
+            currentQuestionDifficulty = 1; // Easy
+            dialog.dispose();
+            openQuestionDialog(playerNum);
+        });
+
+        mediumBtn.addActionListener(e -> {
+            currentQuestionDifficulty = 2; // Medium
+            dialog.dispose();
+            openQuestionDialog(playerNum);
+        });
+
+        hardBtn.addActionListener(e -> {
+            currentQuestionDifficulty = 3; // Hard
+            dialog.dispose();
+            openQuestionDialog(playerNum);
+        });
+
+        advancedBtn.addActionListener(e -> {
+            currentQuestionDifficulty = 4; // Advanced
+            dialog.dispose();
+            openQuestionDialog(playerNum);
+        });
+
+        dialog.add(easyBtn);
+        dialog.add(mediumBtn);
+        dialog.add(hardBtn);
+        dialog.add(advancedBtn);
+
+        dialog.setVisible(true);
+    }
+
 }

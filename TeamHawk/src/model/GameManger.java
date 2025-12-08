@@ -153,15 +153,17 @@ public class GameManger {
         }
     }
 
-    // +1 life up to max; if already full, convert the “extra life” into points
-    private void gainLifeOrPoints() {
+ // +1 life up to max; if already full, convert the “extra life” into points
+    public void gainLifeOrPoints() {
         if (lives < maxLives) {
-            lives++;
+            lives++;  // give a life until we reach maxLives
         } else {
             // extra life converted to points: same value as the open cost
-            addPoints(getBaseOpenCost());
+            addPoints(getBaseOpenCost());   // EASY: 5, MEDIUM: 8, HARD: 12
         }
     }
+
+
 
     // win = all non-mine cells are revealed (we ignore flags here)
     private boolean checkWinCondition() {
