@@ -214,49 +214,62 @@ public class Main {
             Cell cell = currentBoard.getCell(row, col);
 
             // if the cell is already revealed we ignore this flag click (and don't switch turn)
-            // this makes sure you cant “re-flag” already open cells
             if (cell.isRevealed()) {
                 return;
             }
 
-            boolean addingFlag = cell.isHidden();
+            boolean addingFlag = cell.isHidden(); // true if trying to place a flag
 
-            // toggle flag state (HIDDEN <-> FLAGGED)
-            currentBoard.toggleFlag(row, col);
+            // block placing new flag when score <= 0, but still allow removing existing flags
+            if (addingFlag && gameManager.getScore() <= 0) {
+                gameBoardView.showMessage("Not Enough Points",
+                        "You need a positive score to place a flag.");
+                return;
+            }
 
             if (addingFlag) {
-                // we just placed a flag, here we apply the scoring rules from the pdf
+                // we are *attempting* to flag a hidden cell
+
+                // apply scoring rules first (same as before)
                 switch (cell.getType()) {
                     case NUMBER -> gameManager.addPoints(-3);
-                    case EMPTY  -> gameManager.addPoints(-3);
+                    case EMPTY -> gameManager.addPoints(-3);
                     case SURPRISE -> gameManager.addPoints(-3);
                     case QUESTION -> gameManager.addPoints(-3);
-                    case MINE   -> gameManager.addPoints(+1);
+                    case MINE -> gameManager.addPoints(+1);
                 }
 
-                // if it is a mine, we also reveal it so it is removed from "mines left"
-                // this way the mines counter goes down when we correctly flag a mine
                 if (cell.isMine()) {
-                    // reveal without cascade
+                    // CORRECT FLAG ON A MINE:
+                    // reveal without cascade and keep it revealed
                     cell.setState(CellState.REVEALED);
                     // update mines left after this mine is no longer hidden
                     gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                } else {
+                    // WRONG FLAG:
+                    // player loses score (already applied above),
+                    // cell stays hidden and DOES NOT become flagged
+                    cell.setState(CellState.HIDDEN);
                 }
+
             } else {
-                // we removed a flag -> no score change, we just put the cell back to hidden
+                // removing an existing flag (cell is currently FLAGGED)
+                // we do not change score, just hide it again
                 cell.setState(CellState.HIDDEN);
             }
 
             // update score label
             gameBoardView.updateScore(gameManager.getScore());
 
-            // redraw this cell (so we see the * and background color correctly)
-            cell = currentBoard.getCell(row, col);
+            // redraw this cell based on its new state/type
+            cell = currentBoard.getCell(row, col); // re-fetch if needed
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
 
-            // after a valid flag/unflag we pass the turn to the other player
+            // after a flag attempt (right-click) we still pass the turn
             switchTurn();
         }
+
+
 
 
         @Override
