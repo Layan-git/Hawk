@@ -5,6 +5,8 @@ import model.Board.Difficulty;
 import model.Cell;
 import model.Cell.CellState;
 import model.GameManger;
+import model.Questions;
+import model.SysData;
 import view.MainMenu;
 import view.GameSetup;
 import view.GameBoardView;
@@ -38,6 +40,9 @@ public class Main {
     private GameSetup gameSetup;
     private GameBoardView gameBoardView;
     private GameManger gameManager;
+    
+ // in Main class, add a field:
+    private view.QuestionsManager questionsManager;
 
     private Board board1;
     private Board board2;
@@ -58,7 +63,8 @@ public class Main {
 
     // ---------------- Controllers -------------------
 
-    // this controller is just wiring the main menu buttons to the actions in this class
+
+    // inside menuController:
     private final MainMenuController menuController = new MainMenuController() {
         @Override
         public void startGame() { showSetup(); }
@@ -67,7 +73,12 @@ public class Main {
         public void openHistory() {}
 
         @Override
-        public void openManageQuestions() {}
+        public void openManageQuestions() {
+            if (questionsManager == null) {
+                questionsManager = new view.QuestionsManager();
+            }
+            questionsManager.show();
+        }
 
         @Override
         public void openHowToPlay() {}
@@ -75,6 +86,7 @@ public class Main {
         @Override
         public void exit() { System.exit(0); }
     };
+
 
     // this controller handles the setup screen, once both names + difficulty are chosen we start the game
     private final GameSetupController setupController = new GameSetupController() {
@@ -319,9 +331,11 @@ public class Main {
     // here we actually create the 2 boards and the game manager and open the game window
     private void startGameBoard(String p1, String p2, Difficulty difficulty) {
         if (gameSetup != null) gameSetup.close();
-
         gameManager = new GameManger();
-        gameManager.GameManager(difficulty);   // custom init method in GameManger
+        gameManager.GameManager(difficulty);
+
+        // NEW: reset used question tracking for a fresh game
+        model.SysData.resetAskedQuestions();
 
         board1 = new Board(difficulty);
         board2 = new Board(difficulty);
@@ -535,39 +549,45 @@ public class Main {
 
     // ---------------- Question Dialog (placeholder) -------------------
 
-    // for now this is a fake question dialog, later you can plug in real questions from the db
     private void openQuestionDialog(int playerNum) {
-        JDialog dialog = new JDialog();
-        dialog.setTitle("Question");
-        dialog.setModal(true);
-        dialog.setSize(400, 260);
-        dialog.setLayout(new GridLayout(5, 1));
-        dialog.setLocationRelativeTo(null);
+        Questions q = SysData.getRandomQuestion(currentQuestionDifficulty);
+        if (q == null) {
+            JOptionPane.showMessageDialog(null,
+                    "No questions left for this difficulty.",
+                    "No Questions",
+                    JOptionPane.INFORMATION_MESSAGE);
+            // still switch turn after “answering nothing”
+            handleQuestionAnswer(null, false); // or just switchTurn()
+            return;
+        }
 
-        JLabel label = new JLabel(
-                "<html>Temporary question placeholder<br/>(Iteration 1 Simulation)</html>",
-                SwingConstants.CENTER
-        );
+        JDialog dialog = new JDialog();
+        dialog.setTitle("Question (Difficulty " + currentQuestionDifficulty + ")");
+        dialog.setModal(true);
+        dialog.setSize(500, 300);
+        dialog.setLocationRelativeTo(null);
+        dialog.setLayout(new GridLayout(5, 1));
+
+        JLabel label = new JLabel("<html>" + q.getText() + "</html>", SwingConstants.CENTER);
         dialog.add(label);
 
-        JButton a = new JButton("Answer A");
-        JButton b = new JButton("Answer B");
-        JButton c = new JButton("Answer C");
-        JButton d = new JButton("Answer D");
+        JButton a = new JButton("A) " + q.getOptA());
+        JButton b = new JButton("B) " + q.getOptB());
+        JButton c = new JButton("C) " + q.getOptC());
+        JButton d = new JButton("D) " + q.getOptD());
 
-        // for now all answers are treated the same, later you decide which one is actually correct
-        a.addActionListener(e -> handleQuestionAnswer(dialog, false));
-        b.addActionListener(e -> handleQuestionAnswer(dialog, false));
-        c.addActionListener(e -> handleQuestionAnswer(dialog, false));
-        d.addActionListener(e -> handleQuestionAnswer(dialog, false));
+        a.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("A")));
+        b.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("B")));
+        c.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("C")));
+        d.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("D")));
 
         dialog.add(a);
         dialog.add(b);
         dialog.add(c);
         dialog.add(d);
-
         dialog.setVisible(true);
     }
+
 
     // after answering a question we pay the open cost, apply effect and mark the Q as attempted
     private void handleQuestionAnswer(JDialog dialog, boolean isCorrect) {
@@ -606,12 +626,11 @@ public class Main {
         // after handling the question we pass the turn to the other player
         switchTurn();
     }
- // First ask the player to pick question difficulty, then show the actual question
     private void showQuestionDifficultyDialog(int playerNum) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Select Question Difficulty");
         dialog.setModal(true);
-        dialog.setSize(350, 220);
+        dialog.setSize(380, 260);
         dialog.setLocationRelativeTo(null);
         dialog.setLayout(new GridLayout(5, 1));
 
@@ -621,31 +640,42 @@ public class Main {
                 SwingConstants.CENTER);
         dialog.add(msg);
 
-        JButton easyBtn = new JButton("Easy");
-        JButton mediumBtn = new JButton("Medium");
-        JButton hardBtn = new JButton("Hard");
-        JButton advancedBtn = new JButton("Advanced");
+        int remEasy = SysData.getRemainingQuestions(1);
+        int totEasy = SysData.getTotalQuestions(1);
+        int remMed = SysData.getRemainingQuestions(2);
+        int totMed = SysData.getTotalQuestions(2);
+        int remHard = SysData.getRemainingQuestions(3);
+        int totHard = SysData.getTotalQuestions(3);
+        int remAdv = SysData.getRemainingQuestions(4);
+        int totAdv = SysData.getTotalQuestions(4);
+
+        JButton easyBtn = new JButton("Easy  (questions left " + remEasy + "/" + totEasy + ")");
+        JButton mediumBtn = new JButton("Medium  (questions left " + remMed + "/" + totMed + ")");
+        JButton hardBtn = new JButton("Hard  (questions left " + remHard + "/" + totHard + ")");
+        JButton advancedBtn = new JButton("Advanced  (questions left " + remAdv + "/" + totAdv + ")");
+
+        easyBtn.setEnabled(remEasy > 0);
+        mediumBtn.setEnabled(remMed > 0);
+        hardBtn.setEnabled(remHard > 0);
+        advancedBtn.setEnabled(remAdv > 0);
 
         easyBtn.addActionListener(e -> {
-            currentQuestionDifficulty = 1; // Easy
+            currentQuestionDifficulty = 1;
             dialog.dispose();
             openQuestionDialog(playerNum);
         });
-
         mediumBtn.addActionListener(e -> {
-            currentQuestionDifficulty = 2; // Medium
+            currentQuestionDifficulty = 2;
             dialog.dispose();
             openQuestionDialog(playerNum);
         });
-
         hardBtn.addActionListener(e -> {
-            currentQuestionDifficulty = 3; // Hard
+            currentQuestionDifficulty = 3;
             dialog.dispose();
             openQuestionDialog(playerNum);
         });
-
         advancedBtn.addActionListener(e -> {
-            currentQuestionDifficulty = 4; // Advanced
+            currentQuestionDifficulty = 4;
             dialog.dispose();
             openQuestionDialog(playerNum);
         });
@@ -657,5 +687,8 @@ public class Main {
 
         dialog.setVisible(true);
     }
+    
+
+
 
 }
