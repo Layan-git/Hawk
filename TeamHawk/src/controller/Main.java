@@ -1,5 +1,7 @@
 package controller;
 
+import java.awt.GridLayout;
+import javax.swing.*;
 import model.Board;
 import model.Board.Difficulty;
 import model.Cell;
@@ -7,12 +9,9 @@ import model.Cell.CellState;
 import model.GameManger;
 import model.Questions;
 import model.SysData;
-import view.MainMenu;
-import view.GameSetup;
 import view.GameBoardView;
-
-import java.awt.GridLayout;
-import javax.swing.*;
+import view.GameSetup;
+import view.MainMenu;
 
 public class Main {
 
@@ -21,6 +20,8 @@ public class Main {
         void openHistory();
         void openManageQuestions();
         void openHowToPlay();
+        void openSettings();
+        void showMainMenu();
         void exit();
     }
 
@@ -43,6 +44,7 @@ public class Main {
     
  // in Main class, add a field:
     private view.QuestionsManager questionsManager;
+    private view.Settings settings;
 
     private Board board1;
     private Board board2;
@@ -82,6 +84,20 @@ public class Main {
 
         @Override
         public void openHowToPlay() {}
+
+        @Override
+        public void openSettings() {
+            if (settings == null) {
+                settings = new view.Settings(this);
+            }
+            mainMenu.close();
+            settings.show();
+        }
+
+        @Override
+        public void showMainMenu() {
+            mainMenu.show();
+        }
 
         @Override
         public void exit() { System.exit(0); }
