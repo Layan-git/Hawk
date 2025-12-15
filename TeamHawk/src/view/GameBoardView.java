@@ -1,16 +1,23 @@
 package view;
 
 import controller.Main.GameBoardController;
-import model.Cell;
-
-import javax.swing.*;
-import javax.swing.border.Border;
-import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
+import model.Cell;
 
 public class GameBoardView {
+
+    // Timer fields
+    private Timer gameTimer;
+    private int elapsedSeconds = 0;
+    private JLabel timerLabel;
 
     private JFrame frame;
     private GameBoardController controller;
@@ -24,9 +31,11 @@ public class GameBoardView {
     private JLabel player1NameLabel;
     private JLabel player2NameLabel;
     private JLabel scoreLabel;
-    private JLabel livesLabel;
+    private JPanel livesPanel;  // Changed from JLabel to JPanel for icon-based display
     private JLabel currentTurnLabel;
     private JLabel statusLabel;
+    // Timer label is added to info panel
+    // ...existing code...
 
     // Containers + mines-left
     private JPanel player1Container;
@@ -35,6 +44,10 @@ public class GameBoardView {
     private JLabel player2MinesLeftLabel;
 
     private int boardSize;
+    
+    // Health bar icon
+    private BufferedImage healthIcon;
+    private static final int ICON_SIZE = 24;
 
     // Colors
     private static final Color COLOR_HIDDEN = new Color(60, 80, 95);
@@ -110,6 +123,9 @@ public class GameBoardView {
         topWrapper.setBorder(BorderFactory.createEmptyBorder(20, 30, 10, 30));
         topWrapper.add(createInfoPanel(), BorderLayout.CENTER);
         mainPanel.add(topWrapper, BorderLayout.NORTH);
+
+        // Timer setup
+        setupGameTimer();
 
         JPanel centerPanel = new JPanel(new GridBagLayout());
         centerPanel.setOpaque(false);
@@ -216,6 +232,9 @@ public class GameBoardView {
     }
 
     private JPanel createInfoPanel() {
+        // Load health icon
+        loadHealthIcon();
+        
         // top bar that shows score, lives and current turn
         JPanel panel = new JPanel() {
             @Override
@@ -241,15 +260,77 @@ public class GameBoardView {
         scoreLabel = (JLabel) scorePanel.getComponent(1);
         panel.add(scorePanel);
 
-        JPanel livesPanel = createInfoItem("Lives:", "10", new Color(100, 255, 100));
-        livesLabel = (JLabel) livesPanel.getComponent(1);
-        panel.add(livesPanel);
+        // Lives panel with icons instead of text
+        JPanel livesPanelWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        livesPanelWrapper.setOpaque(false);
+        JLabel livesTitle = new JLabel("Lives:");
+        livesTitle.setFont(new Font("Tahoma", Font.BOLD, 16));
+        livesTitle.setForeground(new Color(100, 255, 100));
+        livesPanelWrapper.add(livesTitle);
+        
+        livesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        livesPanel.setOpaque(false);
+        livesPanelWrapper.add(livesPanel);
+        panel.add(livesPanelWrapper);
 
-        JPanel turnPanel = createInfoItem("Current Turn:", "Player 1", new Color(255, 215, 0));
-        currentTurnLabel = (JLabel) turnPanel.getComponent(1);
-        panel.add(turnPanel);
+        // Timer label
+        timerLabel = new JLabel("Time: 0:00");
+        timerLabel.setFont(new Font("Tahoma", Font.BOLD, 22));
+        timerLabel.setForeground(new Color(0, 200, 255));
+        panel.add(timerLabel);
 
         return panel;
+    }
+
+    // Load the health icon from resources
+    private void loadHealthIcon() {
+        try {
+            File iconFile = new File("src\\resources\\poisoned_hardcore_full.png");
+            if (!iconFile.exists()) {
+                iconFile = new File("src\\resources\\poisoned_hardcore_full.png");
+            }
+            if (iconFile.exists()) {
+                healthIcon = ImageIO.read(iconFile);
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load health icon: " + e.getMessage());
+        }
+    }
+
+    // Timer setup and control
+    private void setupGameTimer() {
+        gameTimer = new Timer(1000, e -> {
+            elapsedSeconds++;
+            int min = elapsedSeconds / 60;
+            int sec = elapsedSeconds % 60;
+            timerLabel.setText(String.format("Time: %d:%02d", min, sec));
+        });
+        elapsedSeconds = 0;
+        timerLabel.setText("Time: 0:00");
+        gameTimer.start();
+    }
+
+    public void pauseTimer() {
+        if (gameTimer != null && gameTimer.isRunning()) {
+            gameTimer.stop();
+        }
+    }
+
+    public void resumeTimer() {
+        if (gameTimer != null && !gameTimer.isRunning()) {
+            gameTimer.start();
+        }
+    }
+
+    public void stopTimer() {
+        if (gameTimer != null) {
+            gameTimer.stop();
+        }
+    }
+
+    public void resetTimer() {
+        elapsedSeconds = 0;
+        timerLabel.setText("Time: 0:00");
     }
 
     private JPanel createInfoItem(String title, String value, Color valueColor) {
@@ -279,6 +360,9 @@ public class GameBoardView {
             default -> 16;
         };
 
+        int cellSize = 40; // fixed size for all cells
+        Dimension cellDim = new Dimension(cellSize, cellSize);
+
         for (int row = 0; row < boardSize; row++) {
             for (int col = 0; col < boardSize; col++) {
                 final int r = row;
@@ -290,20 +374,20 @@ public class GameBoardView {
                 btn.setFont(new Font("Tahoma", Font.BOLD, fontSize));
                 btn.setFocusPainted(false);
                 btn.setBorder(new LineBorder(new Color(40, 50, 60), 2));
+                btn.setPreferredSize(cellDim);
+                btn.setMinimumSize(cellDim);
+                btn.setMaximumSize(cellDim);
 
                 // mouse listener forwards clicks to controller, plus some UI rules
                 btn.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
                         if (SwingUtilities.isLeftMouseButton(e)) {
-                            // standard reveal click
                             controller.onCellClick(playerNum, r, c);
                         } else if (SwingUtilities.isRightMouseButton(e)) {
-                            // right-click is for flagging, but we don't allow toggling
-                            // if the label already ends with "*" (already treated as flagged)
                             String text = btn.getText();
                             if (text != null && text.endsWith("*")) {
-                                return; // do nothing, don't toggle, don't switch turn
+                                return;
                             }
                             controller.onCellRightClick(playerNum, r, c);
                         }
@@ -311,7 +395,6 @@ public class GameBoardView {
 
                     @Override
                     public void mouseEntered(MouseEvent e) {
-                        // simple hover highlight only while the button is still active
                         if (btn.isEnabled()) {
                             btn.setBorder(new LineBorder(new Color(100, 200, 150), 2));
                         }
@@ -319,7 +402,6 @@ public class GameBoardView {
 
                     @Override
                     public void mouseExited(MouseEvent e) {
-                        // restore normal border on hover exit
                         if (btn.isEnabled()) {
                             btn.setBorder(new LineBorder(new Color(40, 50, 60), 2));
                         }
@@ -330,6 +412,13 @@ public class GameBoardView {
                 boardPanel.add(btn);
             }
         }
+
+        // Set fixed size for the board panel itself
+        int boardPixelSize = boardSize * cellSize;
+        Dimension boardDim = new Dimension(boardPixelSize, boardPixelSize);
+        boardPanel.setPreferredSize(boardDim);
+        boardPanel.setMinimumSize(boardDim);
+        boardPanel.setMaximumSize(boardDim);
     }
 
     private JButton createStyledButton(String text) {
@@ -480,11 +569,27 @@ public class GameBoardView {
     }
 
     public void updateLives(int lives) {
-        livesLabel.setText(String.valueOf(lives));
-    }
-
-    public void updateCurrentTurn(String playerName) {
-        currentTurnLabel.setText(playerName);
+        // Clear existing icons
+        livesPanel.removeAll();
+        
+        // Add icon for each life remaining
+        for (int i = 0; i < lives; i++) {
+            if (healthIcon != null) {
+                // Create a scaled version of the icon
+                Image scaledImage = healthIcon.getScaledInstance(ICON_SIZE, ICON_SIZE, Image.SCALE_SMOOTH);
+                JLabel iconLabel = new JLabel(new ImageIcon(scaledImage));
+                livesPanel.add(iconLabel);
+            } else {
+                // Fallback to text if icon can't be loaded
+                JLabel textLabel = new JLabel("❤");
+                textLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
+                textLabel.setForeground(new Color(220, 50, 50));
+                livesPanel.add(textLabel);
+            }
+        }
+        
+        livesPanel.revalidate();
+        livesPanel.repaint();
     }
 
     public void updateStatus(String status) {

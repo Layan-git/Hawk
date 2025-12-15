@@ -1,5 +1,8 @@
 package controller;
 
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.border.LineBorder;
 import model.Board;
 import model.Board.Difficulty;
 import model.Cell;
@@ -7,12 +10,9 @@ import model.Cell.CellState;
 import model.GameManger;
 import model.Questions;
 import model.SysData;
-import view.MainMenu;
-import view.GameSetup;
 import view.GameBoardView;
-
-import java.awt.GridLayout;
-import javax.swing.*;
+import view.GameSetup;
+import view.MainMenu;
 
 public class Main {
 
@@ -21,6 +21,8 @@ public class Main {
         void openHistory();
         void openManageQuestions();
         void openHowToPlay();
+        void openSettings();
+        void showMainMenu();
         void exit();
     }
 
@@ -43,6 +45,7 @@ public class Main {
     
  // in Main class, add a field:
     private view.QuestionsManager questionsManager;
+    private view.Settings settings;
 
     private Board board1;
     private Board board2;
@@ -82,6 +85,20 @@ public class Main {
 
         @Override
         public void openHowToPlay() {}
+
+        @Override
+        public void openSettings() {
+            if (settings == null) {
+                settings = new view.Settings(this);
+            }
+            mainMenu.close();
+            settings.show();
+        }
+
+        @Override
+        public void showMainMenu() {
+            mainMenu.show();
+        }
 
         @Override
         public void exit() { System.exit(0); }
@@ -292,8 +309,15 @@ public class Main {
 
         @Override
         public void pauseGame() {
-            // simple pause popup, we still keep the current state and turn
+            // pause the main game timer
+            if (gameBoardView != null) {
+                gameBoardView.pauseTimer();
+            }
             gameBoardView.showMessage("Pause", "Game Paused");
+            // resume timer when dialog closes
+            if (gameBoardView != null) {
+                gameBoardView.resumeTimer();
+            }
         }
 
         @Override
@@ -358,7 +382,6 @@ public class Main {
 
         // shared score and lives also start here
         currentPlayer = 1;
-        gameBoardView.updateCurrentTurn(p1);
         gameBoardView.updateScore(0);
         gameBoardView.updateLives(gameManager.getMaxLives());
         gameBoardView.updateStatus("Game Started!");
@@ -416,30 +439,69 @@ public class Main {
         currentPlayer = next;
 
         String cpName = (currentPlayer == 1) ? player1Name : player2Name;
-        gameBoardView.updateCurrentTurn(cpName);
         gameBoardView.updateTurnVisuals(currentPlayer);
     }
 
 
     // ---------------- "Question Cell" popup -------------------
 
+    // Helper method to style dialogs and buttons to match the game theme
+    private void styleDialog(JDialog dialog) {
+        dialog.setBackground(new Color(15, 25, 30));
+        dialog.getContentPane().setBackground(new Color(15, 25, 30));
+    }
+
+    private JButton createThemedButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setForeground(new Color(220, 235, 230));
+        btn.setFont(new Font("Tahoma", Font.BOLD, 16));
+        btn.setFocusPainted(false);
+        btn.setBackground(new Color(20, 80, 60));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(51, 102, 51), 2, true),
+                BorderFactory.createEmptyBorder(8, 20, 8, 20)
+        ));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setBackground(new Color(30, 120, 80));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(new Color(20, 80, 60));
+            }
+        });
+        return btn;
+    }
+
     // this popup is shown when we open a question cell and the player must pick pass or answer
     private void showQuestionChoiceDialog(int playerNum, int row, int col) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Question Cell");
         dialog.setModal(true);
-        dialog.setSize(350, 200);
+        dialog.setSize(400, 220);
         dialog.setLocationRelativeTo(null);
-        dialog.setLayout(new GridLayout(3, 1));
+        styleDialog(dialog);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(new Color(15, 25, 30));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel msg = new JLabel(
                 "<html>You uncovered a Question Cell!<br/>What do you want to do?</html>",
                 SwingConstants.CENTER
         );
-        dialog.add(msg);
+        msg.setFont(new Font("Tahoma", Font.BOLD, 16));
+        msg.setForeground(new Color(255, 215, 0));
+        msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(msg);
+        mainPanel.add(Box.createVerticalStrut(15));
 
-        JButton passBtn = new JButton("Pass Turn");
-        JButton answerBtn = new JButton("Answer Question");
+        JButton passBtn = createThemedButton("Pass Turn");
+        JButton answerBtn = createThemedButton("Answer Question");
+        passBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        answerBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // pass turn: we just reveal the Q, paint it yellow and give the next player the turn
         passBtn.addActionListener(e -> {
@@ -473,8 +535,10 @@ public class Main {
             showQuestionDifficultyDialog(playerNum);
         });
 
-        dialog.add(passBtn);
-        dialog.add(answerBtn);
+        mainPanel.add(passBtn);
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(answerBtn);
+        dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
@@ -485,18 +549,29 @@ public class Main {
         JDialog dialog = new JDialog();
         dialog.setTitle("Surprise Cell");
         dialog.setModal(true);
-        dialog.setSize(350, 200);
+        dialog.setSize(400, 220);
         dialog.setLocationRelativeTo(null);
-        dialog.setLayout(new GridLayout(3, 1));
+        styleDialog(dialog);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(new Color(15, 25, 30));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel msg = new JLabel(
                 "<html>You uncovered a Surprise Cell!<br/>What do you want to do?</html>",
                 SwingConstants.CENTER
         );
-        dialog.add(msg);
+        msg.setFont(new Font("Tahoma", Font.BOLD, 16));
+        msg.setForeground(new Color(180, 100, 255));
+        msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(msg);
+        mainPanel.add(Box.createVerticalStrut(15));
 
-        JButton passBtn = new JButton("Pass Turn");
-        JButton activateBtn = new JButton("Try Your Luck");
+        JButton passBtn = createThemedButton("Pass Turn");
+        JButton activateBtn = createThemedButton("Try Your Luck");
+        passBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        activateBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // pass: we reveal S, mark that we passed it so it becomes darker but can still be used later
         passBtn.addActionListener(e -> {
@@ -542,8 +617,10 @@ public class Main {
             switchTurn();
         });
 
-        dialog.add(passBtn);
-        dialog.add(activateBtn);
+        mainPanel.add(passBtn);
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(activateBtn);
+        dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
@@ -564,27 +641,111 @@ public class Main {
         JDialog dialog = new JDialog();
         dialog.setTitle("Question (Difficulty " + currentQuestionDifficulty + ")");
         dialog.setModal(true);
-        dialog.setSize(500, 300);
+        dialog.setSize(550, 420);
         dialog.setLocationRelativeTo(null);
-        dialog.setLayout(new GridLayout(5, 1));
+        styleDialog(dialog);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(new Color(15, 25, 30));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
         JLabel label = new JLabel("<html>" + q.getText() + "</html>", SwingConstants.CENTER);
-        dialog.add(label);
+        label.setFont(new Font("Tahoma", Font.BOLD, 14));
+        label.setForeground(new Color(0, 200, 255));
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(label);
+        mainPanel.add(Box.createVerticalStrut(10));
 
-        JButton a = new JButton("A) " + q.getOptA());
-        JButton b = new JButton("B) " + q.getOptB());
-        JButton c = new JButton("C) " + q.getOptC());
-        JButton d = new JButton("D) " + q.getOptD());
+        JButton a = createThemedButton("A) " + q.getOptA());
+        JButton b = createThemedButton("B) " + q.getOptB());
+        JButton c = createThemedButton("C) " + q.getOptC());
+        JButton d = createThemedButton("D) " + q.getOptD());
+        a.setAlignmentX(Component.CENTER_ALIGNMENT);
+        b.setAlignmentX(Component.CENTER_ALIGNMENT);
+        c.setAlignmentX(Component.CENTER_ALIGNMENT);
+        d.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        a.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("A")));
-        b.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("B")));
-        c.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("C")));
-        d.addActionListener(e -> handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("D")));
+        // Timer label for countdown
+        JLabel timerLabel = new JLabel("Time: 20", SwingConstants.CENTER);
+        timerLabel.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 20));
+        timerLabel.setForeground(new java.awt.Color(0, 200, 255));
+        timerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(timerLabel);
+        mainPanel.add(Box.createVerticalStrut(8));
 
-        dialog.add(a);
-        dialog.add(b);
-        dialog.add(c);
-        dialog.add(d);
+        // Array to track if a button was clicked (to prevent multiple answers)
+        final boolean[] answered = {false};
+
+        // Countdown timer: 20 seconds
+        final int[] timeRemaining = {20};
+        Timer questionTimer = new Timer(1000, e -> {
+            timeRemaining[0]--;
+            timerLabel.setText("Time: " + timeRemaining[0]);
+
+            // When time runs out, auto-fail the question
+            if (timeRemaining[0] <= 0) {
+                ((Timer) e.getSource()).stop();
+                if (!answered[0]) {
+                    answered[0] = true;
+                    JOptionPane.showMessageDialog(
+                            dialog,
+                            "Time's up! You failed to answer the question in time.",
+                            "Time Out",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                    handleQuestionAnswer(dialog, false); // fail the question
+                }
+            }
+        });
+        questionTimer.start();
+
+        a.addActionListener(e -> {
+            if (!answered[0]) {
+                answered[0] = true;
+                questionTimer.stop();
+                handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("A"));
+            }
+        });
+        b.addActionListener(e -> {
+            if (!answered[0]) {
+                answered[0] = true;
+                questionTimer.stop();
+                handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("B"));
+            }
+        });
+        c.addActionListener(e -> {
+            if (!answered[0]) {
+                answered[0] = true;
+                questionTimer.stop();
+                handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("C"));
+            }
+        });
+        d.addActionListener(e -> {
+            if (!answered[0]) {
+                answered[0] = true;
+                questionTimer.stop();
+                handleQuestionAnswer(dialog, q.getCorrectAnswer().equalsIgnoreCase("D"));
+            }
+        });
+
+        // Store timer reference so we can stop it when dialog closes
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                questionTimer.stop();
+            }
+        });
+
+        mainPanel.add(a);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(b);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(c);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(d);
+        
+        dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
@@ -604,7 +765,9 @@ public class Main {
         gameBoardView.updateScore(gameManager.getScore());
         gameBoardView.updateLives(gameManager.getLives());
 
-        dialog.dispose();
+        if (dialog != null) {
+            dialog.dispose();
+        }
 
         // if we still remember which question this was, we paint it as attempted (darker Q, disabled)
         if (lastQuestionPlayer != -1 &&
@@ -630,14 +793,17 @@ public class Main {
         JDialog dialog = new JDialog();
         dialog.setTitle("Select Question Difficulty");
         dialog.setModal(true);
-        dialog.setSize(380, 260);
+        dialog.setSize(420, 280);
         dialog.setLocationRelativeTo(null);
-        dialog.setLayout(new GridLayout(5, 1));
+        dialog.setLayout(new GridLayout(5, 1, 5, 5));
+        styleDialog(dialog);
 
         JLabel msg = new JLabel(
                 "<html>Select a difficulty for your question:<br>"
                         + "Easy, Medium, Hard, or Advanced.</html>",
                 SwingConstants.CENTER);
+        msg.setFont(new Font("Tahoma", Font.BOLD, 14));
+        msg.setForeground(new Color(255, 215, 0));
         dialog.add(msg);
 
         int remEasy = SysData.getRemainingQuestions(1);
@@ -649,10 +815,10 @@ public class Main {
         int remAdv = SysData.getRemainingQuestions(4);
         int totAdv = SysData.getTotalQuestions(4);
 
-        JButton easyBtn = new JButton("Easy  (questions left " + remEasy + "/" + totEasy + ")");
-        JButton mediumBtn = new JButton("Medium  (questions left " + remMed + "/" + totMed + ")");
-        JButton hardBtn = new JButton("Hard  (questions left " + remHard + "/" + totHard + ")");
-        JButton advancedBtn = new JButton("Advanced  (questions left " + remAdv + "/" + totAdv + ")");
+        JButton easyBtn = createThemedButton("Easy  (questions left " + remEasy + "/" + totEasy + ")");
+        JButton mediumBtn = createThemedButton("Medium  (questions left " + remMed + "/" + totMed + ")");
+        JButton hardBtn = createThemedButton("Hard  (questions left " + remHard + "/" + totHard + ")");
+        JButton advancedBtn = createThemedButton("Advanced  (questions left " + remAdv + "/" + totAdv + ")");
 
         easyBtn.setEnabled(remEasy > 0);
         mediumBtn.setEnabled(remMed > 0);
