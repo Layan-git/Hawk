@@ -21,7 +21,7 @@ import javax.swing.border.EtchedBorder;
 public class GameSetup {
 
     private JFrame frame;
-    private GameSetupController controller;
+    private final GameSetupController controller;
 
     private JTextField player1Field;
     private JTextField player2Field;
@@ -49,6 +49,7 @@ public class GameSetup {
 
         // background panel with gradient (visual only)
         JPanel bg = new JPanel() {
+            @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
@@ -96,12 +97,14 @@ public class GameSetup {
         player1Field.setForeground(new Color(140, 160, 160));
         player1Field.setCaretColor(new Color(220, 235, 230));
         player1Field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusGained(java.awt.event.FocusEvent e) {
                 if (player1Field.getText().equals(" Enter Player 1 username")) {
                     player1Field.setText("");
                     player1Field.setForeground(new Color(220, 235, 230));
                 }
             }
+            @Override
             public void focusLost(java.awt.event.FocusEvent e) {
                 if (player1Field.getText().equals("")) {
                     player1Field.setText(" Enter Player 1 username");
@@ -143,12 +146,14 @@ public class GameSetup {
         player2Field.setForeground(new Color(140, 160, 160));
         player2Field.setCaretColor(new Color(220, 235, 230));
         player2Field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusGained(java.awt.event.FocusEvent e) {
                 if (player2Field.getText().equals(" Enter Player 2 username")) {
                     player2Field.setText("");
                     player2Field.setForeground(new Color(220, 235, 230));
                 }
             }
+            @Override
             public void focusLost(java.awt.event.FocusEvent e) {
                 if (player2Field.getText().equals("")) {
                     player2Field.setText(" Enter Player 2 username");
@@ -293,6 +298,7 @@ public class GameSetup {
     }
 
     // shared style for text-only buttons at the bottom
+    @SuppressWarnings("unused")
     private void styleTextOnly(JButton b) {
         b.setForeground(new Color(220, 235, 230));
         b.setFont(new Font("Tahoma", Font.PLAIN, 16));

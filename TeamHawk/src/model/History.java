@@ -27,10 +27,15 @@ public class History {
     private int minesHit;
     private int questionsAnswered;
     private int correctQuestions;
+    @SuppressWarnings("unused")
     private int wrongQuestions;
+    @SuppressWarnings("unused")
     private int surprisesTriggered;
+    @SuppressWarnings("unused")
     private int positiveSurprises;
+    @SuppressWarnings("unused")
     private int negativeSurprises;
+    @SuppressWarnings("unused")
     private int livesRemaining;
 
 

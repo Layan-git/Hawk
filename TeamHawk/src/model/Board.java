@@ -10,11 +10,11 @@ public class Board {
         HARD
     }
 
-    private Difficulty difficulty;
+    private final Difficulty difficulty;
     private int rows;
     private int cols;
     private int totalMines;
-    private Cell[][] cells;
+    private final Cell[][] cells;
 
     public Board(Difficulty difficulty) {
         this.difficulty = difficulty;
@@ -30,21 +30,21 @@ public class Board {
     private void configureDifficulty(Difficulty difficulty) {
         // here we decide how big the board is and how many mines for each level
         switch (difficulty) {
-            case EASY:
+            case EASY -> {
                 rows = 9;
                 cols = 9;
                 totalMines = 10;
-                break;
-            case MEDIUM:
+            }
+            case MEDIUM -> {
                 rows = 13;
                 cols = 13;
                 totalMines = 26;
-                break;
-            case HARD:
+            }
+            case HARD -> {
                 rows = 16;
                 cols = 16;
                 totalMines = 44;
-                break;
+            }
         }
     }
 
@@ -109,18 +109,18 @@ public class Board {
 
         // how many specials we want for each difficulty
         switch (difficulty) {
-            case EASY:
+            case EASY -> {
                 questionCells = 6;
                 surpriseCells = 2;
-                break;
-            case MEDIUM:
+            }
+            case MEDIUM -> {
                 questionCells = 7;
                 surpriseCells = 3;
-                break;
-            case HARD:
+            }
+            case HARD -> {
                 questionCells = 11;
                 surpriseCells = 4;
-                break;
+            }
         }
 
         // safety cap to avoid infinite loops on very constrained boards

@@ -10,6 +10,8 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -93,7 +95,7 @@ public class MainMenu {
         sidePanel.setLayout(null);
 
         // Place icon at the top of side panel
-        javax.swing.JLabel iconLabel = new javax.swing.JLabel(new ImageIcon(MainMenu.class.getResource("/resources/bomb.png")));
+        javax.swing.JLabel iconLabel = new javax.swing.JLabel(new ImageIcon(MainMenu.class.getResource("/resources/nerd_icon_shwompy.png")));
         iconLabel.setBounds((280 - 64) / 2, 30, 64, 64);
         sidePanel.add(iconLabel);
 
@@ -134,12 +136,38 @@ public class MainMenu {
         sidePanel.add(howBtn);
         styleMenuButton(howBtn);
 
-        // Settings button in top right corner
-        JButton settingsBtn = new JButton("⚙");
-        settingsBtn.setBounds(W - 60, 10, 50, 50);
+        // Settings button in top right corner with cog icon
+        JButton settingsBtn = new JButton();
+        settingsBtn.setBounds(W - 75, 10, 50, 50);
+        settingsBtn.setFocusPainted(false);
+        settingsBtn.setContentAreaFilled(false);
+        settingsBtn.setBorderPainted(false);
+        
+        // Load gears icon with better quality
+        try {
+            File gearsFile = new File("src/resources/gears.png");
+            if (!gearsFile.exists()) {
+                gearsFile = new File("resources/gears.png");
+            }
+            if (gearsFile.exists()) {
+                java.awt.image.BufferedImage gearsImage = ImageIO.read(gearsFile);
+                // Use SCALE_AREA_AVERAGING for better quality
+                Image scaledImage = gearsImage.getScaledInstance(50, 50, Image.SCALE_AREA_AVERAGING);
+                settingsBtn.setIcon(new ImageIcon(scaledImage));
+                settingsBtn.setRolloverIcon(new ImageIcon(
+                    gearsImage.getScaledInstance(52, 52, Image.SCALE_AREA_AVERAGING)
+                ));
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load cog icon: " + e.getMessage());
+            settingsBtn.setText("⚙");
+            settingsBtn.setFont(new Font("Tahoma", Font.PLAIN, 24));
+        }
+        
         bg.add(settingsBtn);
+        // Don't style it with menu button styling for icon buttons
+        settingsBtn.setOpaque(false);
         styleMenuButton(settingsBtn);
-        settingsBtn.setFont(new Font("Tahoma", Font.PLAIN, 24));
 
         // --- BEHAVIOR: hook up menu actions to controller here ---
 
@@ -150,7 +178,7 @@ public class MainMenu {
         settingsBtn.addActionListener(e -> controller.openSettings());
 
         // set window/taskbar icon (may need adjustment for IDE resource path)
-        frame.setIconImage(new ImageIcon("/resources/bomb.png").getImage());   
+        frame.setIconImage(new ImageIcon("/resources/nerd_icon_shwompy.png").getImage());   
     }
 
     // all menu buttons use same simple style with hover effect
