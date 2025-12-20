@@ -18,6 +18,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import model.ResourceLoader;
 
 public class MainMenu {
 
@@ -58,9 +59,23 @@ public class MainMenu {
         JPanel bg = new JPanel() {
             private final Image bgImage;
             {
-                ImageIcon icon = new ImageIcon(MainMenu.class.getResource("/resources/bg.gif"));
-                // GIF loops forever by default in Swing
-                bgImage = icon.getImage();
+                Image img = null;
+                // Load from classpath resources
+                java.net.URL bgUrl = MainMenu.class.getResource("/resources/bg.gif");
+                if (bgUrl != null) {
+                    img = new ImageIcon(bgUrl).getImage();
+                } else {
+                    // Fallback for development
+                    String bgPath = ResourceLoader.getResourcePath("/resources/bg.gif");
+                    if (bgPath != null) {
+                        try {
+                            img = ImageIO.read(new File(bgPath));
+                        } catch (Exception e) {
+                            System.err.println("Could not load background image: " + e.getMessage());
+                        }
+                    }
+                }
+                bgImage = img;
             }
             @Override
             protected void paintComponent(Graphics g) {
@@ -95,7 +110,20 @@ public class MainMenu {
         sidePanel.setLayout(null);
 
         // Place icon at the top of side panel
-        javax.swing.JLabel iconLabel = new javax.swing.JLabel(new ImageIcon(MainMenu.class.getResource("/resources/nerd_icon_shwompy.png")));
+        javax.swing.JLabel iconLabel = new javax.swing.JLabel();
+        try {
+            java.net.URL iconUrl = MainMenu.class.getResource("/resources/nerd_icon_shwompy.png");
+            if (iconUrl != null) {
+                iconLabel.setIcon(new ImageIcon(iconUrl));
+            } else {
+                String iconPath = ResourceLoader.getResourcePath("/resources/nerd_icon_shwompy.png");
+                if (iconPath != null) {
+                    iconLabel.setIcon(new ImageIcon(ImageIO.read(new File(iconPath))));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load nerd icon: " + e.getMessage());
+        }
         iconLabel.setBounds((280 - 64) / 2, 30, 64, 64);
         sidePanel.add(iconLabel);
 
@@ -145,18 +173,27 @@ public class MainMenu {
         
         // Load gears icon with better quality
         try {
-            File gearsFile = new File("src/resources/gears.png");
-            if (!gearsFile.exists()) {
-                gearsFile = new File("resources/gears.png");
+            java.awt.image.BufferedImage gearsImage = null;
+            // Try classpath first (for JAR)
+            java.net.URL gearsUrl = MainMenu.class.getResource("/resources/gears.png");
+            if (gearsUrl != null) {
+                gearsImage = ImageIO.read(gearsUrl);
+            } else {
+                // Fallback to file system (for IDE)
+                String gearsPath = ResourceLoader.getResourcePath("/resources/gears.png");
+                if (gearsPath != null && !gearsPath.isEmpty()) {
+                    gearsImage = ImageIO.read(new File(gearsPath));
+                }
             }
-            if (gearsFile.exists()) {
-                java.awt.image.BufferedImage gearsImage = ImageIO.read(gearsFile);
+            if (gearsImage != null) {
                 // Use SCALE_AREA_AVERAGING for better quality
                 Image scaledImage = gearsImage.getScaledInstance(50, 50, Image.SCALE_AREA_AVERAGING);
                 settingsBtn.setIcon(new ImageIcon(scaledImage));
                 settingsBtn.setRolloverIcon(new ImageIcon(
                     gearsImage.getScaledInstance(52, 52, Image.SCALE_AREA_AVERAGING)
                 ));
+            } else {
+                throw new Exception("Gears icon not found");
             }
         } catch (Exception e) {
             System.err.println("Could not load cog icon: " + e.getMessage());
@@ -177,8 +214,20 @@ public class MainMenu {
         startBtn.addActionListener(e -> controller.startGame());
         settingsBtn.addActionListener(e -> controller.openSettings());
 
-        // set window/taskbar icon (may need adjustment for IDE resource path)
-        frame.setIconImage(new ImageIcon("/resources/nerd_icon_shwompy.png").getImage());   
+        // set window/taskbar icon
+        try {
+            java.net.URL iconUrl = MainMenu.class.getResource("/resources/nerd_icon_shwompy.png");
+            if (iconUrl != null) {
+                frame.setIconImage(new ImageIcon(iconUrl).getImage());
+            } else {
+                String iconPath = ResourceLoader.getResourcePath("/resources/nerd_icon_shwompy.png");
+                if (iconPath != null) {
+                    frame.setIconImage(ImageIO.read(new File(iconPath)));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not set window icon: " + e.getMessage());
+        }   
     }
 
     // all menu buttons use same simple style with hover effect

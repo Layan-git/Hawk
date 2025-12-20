@@ -10,7 +10,12 @@ import java.util.Set;
 
 public class SysData {
 
-    private static final String CSV_PATH = "src/csvFiles/Questions.csv";
+    private static String CSV_PATH = null;
+    
+    static {
+        // Initialize CSV_PATH to work in both IDE and JAR
+        CSV_PATH = ResourceLoader.getCSVPath();
+    }
 
     // All questions in memory
     private static final List<Questions> questionList = new ArrayList<>();
@@ -23,7 +28,13 @@ public class SysData {
         for (int d = 1; d <= 4; d++) {
             askedQuestionIds.put(d, new HashSet<>());
         }
-        loadQuestions();
+        // Load from classpath if available
+        InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/Questions.csv");
+        if (csvStream != null) {
+            loadQuestionsFromStream(csvStream);
+        } else {
+            loadQuestions();
+        }
     }
 
     // ---------------- Loading & Saving ----------------
@@ -71,6 +82,54 @@ public class SysData {
                 }
             }
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Load questions from an InputStream (works with JAR classpath resources)
+    private static void loadQuestionsFromStream(InputStream is) {
+        questionList.clear();
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+
+                // Skip the two initial header lines and the real header
+                if (line.equals("Questions") ||
+                    line.equals("Questions,,,,,,,") ||
+                    line.startsWith("ID,Question,")) {
+                    continue;
+                }
+
+                // We know we should have exactly 8 CSV columns:
+                // ID, Question, Difficulty, A, B, C, D, Correct
+                String[] fields = parseCsvLine(line);
+                if (fields.length != 8) {
+                    System.out.println("Skipping bad line (expected 8 fields): " + line);
+                    continue;
+                }
+
+                try {
+                    int id = Integer.parseInt(fields[0].trim());
+                    String text = fields[1].trim();
+                    int difficulty = Integer.parseInt(fields[2].trim());
+                    String optA = fields[3].trim();
+                    String optB = fields[4].trim();
+                    String optC = fields[5].trim();
+                    String optD = fields[6].trim();
+                    String correct = fields[7].trim();
+
+                    Questions q = new Questions(id, text, difficulty, optA, optB, optC, optD, correct);
+                    questionList.add(q);
+                } catch (NumberFormatException e) {
+                    System.out.println("Skipping bad line (parse error): " + line);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to load questions from stream: " + e.getMessage());
             e.printStackTrace();
         }
     }

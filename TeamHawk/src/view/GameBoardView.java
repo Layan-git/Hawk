@@ -11,6 +11,7 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
 import model.Cell;
+import model.ResourceLoader;
 
 public class GameBoardView {
 
@@ -285,12 +286,18 @@ public class GameBoardView {
     // Load the health icon from resources
     private void loadHealthIcon() {
         try {
-            File iconFile = new File("src\\resources\\poisoned_hardcore_full.png");
-            if (!iconFile.exists()) {
-                iconFile = new File("src\\resources\\poisoned_hardcore_full.png");
-            }
-            if (iconFile.exists()) {
-                healthIcon = ImageIO.read(iconFile);
+            // Try classpath first (for JAR)
+            java.net.URL iconUrl = GameBoardView.class.getResource("/resources/poisoned_hardcore_full.png");
+            if (iconUrl != null) {
+                healthIcon = ImageIO.read(iconUrl);
+            } else {
+                // Fallback to file system (for IDE)
+                String iconPath = ResourceLoader.getResourcePath("/resources/poisoned_hardcore_full.png");
+                if (iconPath != null && !iconPath.isEmpty()) {
+                    healthIcon = ImageIO.read(new File(iconPath));
+                } else {
+                    System.err.println("Health icon not found");
+                }
             }
         } catch (Exception e) {
             System.err.println("Could not load health icon: " + e.getMessage());
