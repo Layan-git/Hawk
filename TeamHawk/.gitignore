@@ -1,1 +1,8 @@
+<<<<<<< Updated upstream:TeamHawk/.gitignore
 /bin/
+=======
+/resources/
+/controller/
+/view/
+/model/
+>>>>>>> Stashed changes:bin/.gitignore
