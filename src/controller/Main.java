@@ -1,8 +1,10 @@
 package controller;
 
 import java.awt.*;
+import java.time.LocalDateTime;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
+
 import model.Board;
 import model.Board.Difficulty;
 import model.Cell;
@@ -10,6 +12,7 @@ import model.Cell.CellState;
 import model.GameManger;
 import model.Questions;
 import model.SysData;
+import model.History;
 import view.GameBoardView;
 import view.GameSetup;
 import view.MainMenu;
@@ -42,17 +45,20 @@ public class Main {
     private GameSetup gameSetup;
     private GameBoardView gameBoardView;
     private GameManger gameManager;
-    
- // in Main class, add a field:
+
+    // login/admin
+    private view.LoginView loginView;
+    private boolean isAdmin = false;
+    private String currentUser = null;
+
+    // in Main class, add a field:
     private view.QuestionsManager questionsManager;
     private view.Settings settings;
 
     private Board board1;
     private Board board2;
 
-    @SuppressWarnings("unused")
     private String player1Name;
-    @SuppressWarnings("unused")
     private String player2Name;
 
     private int currentPlayer = 1;   // we start the game with player 1
@@ -61,13 +67,34 @@ public class Main {
     private int lastQuestionPlayer = -1;
     private int lastQuestionRow = -1;
     private int lastQuestionCol = -1;
-    
- // question difficulty chosen by player: 1 = Easy, 2 = Medium, 3 = Hard, 4 = Advanced
+
+    // question difficulty chosen by player: 1 = Easy, 2 = Medium, 3 = Hard, 4 = Advanced
     private int currentQuestionDifficulty = 1;
 
+    // stats for summary / history
+    private int minesHit = 0;
+    private int questionsAnswered = 0;
+    private int correctQuestions = 0;
+    private int wrongQuestions = 0;
+    private int surprisesTriggered = 0;
+    private int positiveSurprises = 0;
+    private int negativeSurprises = 0;
+
+    // controller for summary screen
+    private class SummaryControllerImpl implements view.GameSummaryView.SummaryController {
+        @Override
+        public void onPlayAgain() {
+            Difficulty d = board1.getDifficulty();
+            startGameBoard(player1Name, player2Name, d);
+        }
+
+        @Override
+        public void onBackToMenu() {
+            mainMenu.show();
+        }
+    }
 
     // ---------------- Controllers -------------------
-
 
     // inside menuController:
     private final MainMenuController menuController = new MainMenuController() {
@@ -75,10 +102,22 @@ public class Main {
         public void startGame() { showSetup(); }
 
         @Override
-        public void openHistory() {}
+        public void openHistory() {
+            view.HistoryView historyView = new view.HistoryView(currentUser, isAdmin);
+            historyView.show();
+        }
 
         @Override
         public void openManageQuestions() {
+            if (!isAdmin) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Only admin can manage questions.",
+                        "Access Denied",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
             if (questionsManager == null) {
                 questionsManager = new view.QuestionsManager();
             }
@@ -105,7 +144,6 @@ public class Main {
         @Override
         public void exit() { System.exit(0); }
     };
-
 
     // this controller handles the setup screen, once both names + difficulty are chosen we start the game
     private final GameSetupController setupController = new GameSetupController() {
@@ -150,18 +188,17 @@ public class Main {
     private void showQuestionAnswerMessage(GameManger.QuestionResult result) {
         // Calculate overall result: outcomePoints - attemptCost (cost is already negative)
         int overallPoints = result.pointsChange - result.attemptCost;
-        
-        // Build the detailed message
+
         StringBuilder msg = new StringBuilder();
         msg.append("Attempt Cost: -").append(result.attemptCost).append(" points\n\n");
         msg.append("Attempt Outcome:\n");
-        
+
         if (result.pointsChange >= 0) {
             msg.append("+").append(result.pointsChange).append(" points");
         } else {
             msg.append(result.pointsChange).append(" points");
         }
-        
+
         if (result.livesChange > 0) {
             msg.append(" & +").append(result.livesChange).append(" life");
             if (result.livesChange > 1) msg.append("s");
@@ -169,12 +206,11 @@ public class Main {
             msg.append(" & ").append(result.livesChange).append(" life");
             if (result.livesChange < -1) msg.append("s");
         }
-        
-        // Add effect description if present
+
         if (result.effectDescription != null && !result.effectDescription.isEmpty()) {
             msg.append(" (").append(result.effectDescription).append(")");
         }
-        
+
         msg.append("\n\n");
         msg.append("Overall Result:\n");
         if (overallPoints >= 0) {
@@ -182,7 +218,7 @@ public class Main {
         } else {
             msg.append(overallPoints).append(" points");
         }
-        
+
         if (result.livesChange > 0) {
             msg.append(" & +").append(result.livesChange).append(" life");
             if (result.livesChange > 1) msg.append("s");
@@ -190,7 +226,7 @@ public class Main {
             msg.append(" & ").append(result.livesChange).append(" life");
             if (result.livesChange < -1) msg.append("s");
         }
-        
+
         String title = result.isCorrect ? "Correct!" : "Incorrect!";
         int messageType = result.isCorrect ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE;
 
@@ -209,7 +245,6 @@ public class Main {
 
         @Override
         public void onCellClick(int playerNum, int row, int col) {
-            // we ignore clicks from the wrong board so only the active player can play
             if (playerNum != currentPlayer) {
                 gameBoardView.showMessage("Wrong Turn", "Wait for your turn!");
                 return;
@@ -218,31 +253,26 @@ public class Main {
             Board currentBoard = (playerNum == 1) ? board1 : board2;
             Cell cell = currentBoard.getCell(row, col);
 
-            // allow clicking revealed QUESTION cell again (if not attempted yet)
-            // this is for the case where the player passed and later decides to answer it
             if (cell.isQuestion() && cell.isRevealed() && !cell.isQuestionAttempted()) {
                 showQuestionChoiceDialog(playerNum, row, col);
                 return;
             }
 
-            // allow clicking revealed SURPRISE cell again (if not yet used)
-            // same idea as question: you can come back later and activate the surprise
             if (cell.isSurprise() && cell.isRevealed() && !cell.isReadyForSurprise()) {
                 showSurpriseChoiceDialog(playerNum, row, col);
                 return;
             }
 
-            // flagged cells are “locked”, left click does nothing here
             if (cell.isFlagged())
                 return;
 
             // ---------------- MINE -----------------
-            // if we hit a hidden mine we reveal it, take a life and maybe end the game
             if (cell.isMine() && cell.isHidden()) {
                 currentBoard.reveal(row, col);
                 updateBoardDisplay(playerNum, currentBoard);
 
                 gameManager.processMineHit();
+                minesHit++;  // stats
                 gameBoardView.updateLives(gameManager.getLives());
                 gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
 
@@ -253,40 +283,29 @@ public class Main {
                         JOptionPane.ERROR_MESSAGE
                 );
 
-                // if shared lives reach 0 we show game over and go back to menu
                 if (gameManager.getLives() <= 0) {
-                    JOptionPane.showMessageDialog(
-                            null,
-                            "Game Over! No lives left.",
-                            "Game Over",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                    quitToMenu();
+                    endGameAndShowSummary(false);
                     return;
                 }
 
-                // mine was handled, now we just pass the turn
                 switchTurn();
                 return;
             }
 
             // ---------------- QUESTION CELL -----------------
-            // question cell gives the player a choice: answer now or pass turn and keep it for later
             if (cell.isQuestion() && cell.isHidden()) {
                 showQuestionChoiceDialog(playerNum, row, col);
                 return;
             }
 
             // ---------------- SURPRISE CELL -----------------
-            // same idea for surprise: pass and mark it darker, or activate and get random effect
             if (cell.isSurprise() && cell.isHidden()) {
                 showSurpriseChoiceDialog(playerNum, row, col);
                 return;
             }
 
-            // ---------------- SAFE CELL (EMPTY or NUMBER) -----------------
-            // normal safe cell, we open it, update view, give +1 point and move to the other player
-            if (cell.isHidden() && (cell.isSafe())) {
+            // ---------------- SAFE CELL -----------------
+            if (cell.isHidden() && cell.isSafe()) {
                 currentBoard.reveal(row, col);
                 updateBoardDisplay(playerNum, currentBoard);
 
@@ -298,21 +317,18 @@ public class Main {
 
         @Override
         public void onCellRightClick(int playerNum, int row, int col) {
-            // right click also obeys turn rules, we dont let the other player flag your board
             if (playerNum != currentPlayer)
                 return;
 
             Board currentBoard = (playerNum == 1) ? board1 : board2;
             Cell cell = currentBoard.getCell(row, col);
 
-            // if the cell is already revealed we ignore this flag click (and don't switch turn)
             if (cell.isRevealed()) {
                 return;
             }
 
             boolean addingFlag = cell.isHidden(); // true if trying to place a flag
 
-            // block placing new flag when score <= 0, but still allow removing existing flags
             if (addingFlag && gameManager.getScore() <= 0) {
                 gameBoardView.showMessage("Not Enough Points",
                         "You need a positive score to place a flag.");
@@ -320,60 +336,39 @@ public class Main {
             }
 
             if (addingFlag) {
-                // scoring for placing a flag
                 switch (cell.getType()) {
                     case NUMBER -> gameManager.addPoints(-3);
                     case EMPTY -> gameManager.addPoints(-3);
                     case SURPRISE -> gameManager.addPoints(-3);
                     case QUESTION -> gameManager.addPoints(-3);
                     case MINE -> {
-                        // no fixed +1 here anymore
-                        // reward is handled by gainLifeOrPoints() below
                     }
                 }
 
                 if (cell.isMine()) {
-                    // reward: if lives < max -> +1 life, else +open-cost points
                     gameManager.gainLifeOrPoints();
-
-                    // update lives on UI since they may have changed
                     gameBoardView.updateLives(gameManager.getLives());
-
-                    // reveal mine (no cascade) and update mines-left
                     cell.setState(CellState.REVEALED);
                     gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
                 } else {
-                    // wrong flag: cell stays flagged (flag stays on top)
                     cell.setState(CellState.FLAGGED);
                 }
             } else {
-                // removing a flag: just hide, no score change
                 cell.setState(CellState.HIDDEN);
             }
 
-
-            // update score label
             gameBoardView.updateScore(gameManager.getScore());
-
-            // redraw this cell based on its new state/type
-            cell = currentBoard.getCell(row, col); // re-fetch if needed
+            cell = currentBoard.getCell(row, col);
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
-
-            // after a flag attempt (right-click) we still pass the turn
             switchTurn();
         }
 
-
-
-
         @Override
         public void pauseGame() {
-            // pause the main game timer
             if (gameBoardView != null) {
                 gameBoardView.pauseTimer();
             }
             gameBoardView.showMessage("Pause", "Game Paused");
-            // resume timer when dialog closes
             if (gameBoardView != null) {
                 gameBoardView.resumeTimer();
             }
@@ -381,7 +376,6 @@ public class Main {
 
         @Override
         public void quitToMenu() {
-            // close the board window and go back to main menu screen
             if (gameBoardView != null) gameBoardView.close();
             mainMenu.show();
         }
@@ -389,10 +383,41 @@ public class Main {
 
     // ---------------- Constructor -------------------
 
-    // when the app starts we only show the main menu, game is created later from setup
     public Main() {
-        mainMenu = new MainMenu(menuController);
-        mainMenu.show();
+        view.LoginView.LoginController loginController = new view.LoginView.LoginController() {
+            @Override
+            public void onLogin(String username, String password) {
+                if ("admin".equalsIgnoreCase(username) && "admin".equals(password)) {
+                    isAdmin = true;
+                    currentUser = "admin";
+                } else {
+                    isAdmin = false;
+                    currentUser = username;
+                }
+
+                if (currentUser == null || currentUser.isEmpty()) {
+                    JOptionPane.showMessageDialog(
+                            null,
+                            "Please enter a username.",
+                            "Login",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                    return;
+                }
+
+                loginView.close();
+                mainMenu = new MainMenu(menuController);
+                mainMenu.show();
+            }
+
+            @Override
+            public void onExit() {
+                System.exit(0);
+            }
+        };
+
+        loginView = new view.LoginView(loginController);
+        loginView.show();
     }
 
     public static void main(String[] args) {
@@ -401,7 +426,6 @@ public class Main {
 
     // ---------------- Setup -------------------
 
-    // this shows the setup window where we choose names and difficulty
     private void showSetup() {
         if (gameSetup == null)
             gameSetup = new GameSetup(setupController);
@@ -411,20 +435,25 @@ public class Main {
 
     // ---------------- Start Game -------------------
 
-    // here we actually create the 2 boards and the game manager and open the game window
     private void startGameBoard(String p1, String p2, Difficulty difficulty) {
         if (gameSetup != null) gameSetup.close();
         gameManager = new GameManger();
         gameManager.GameManager(difficulty);
 
-        // NEW: reset used question tracking for a fresh game
-        model.SysData.resetAskedQuestions();
+        SysData.resetAskedQuestions();
+
+        minesHit = 0;
+        questionsAnswered = 0;
+        correctQuestions = 0;
+        wrongQuestions = 0;
+        surprisesTriggered = 0;
+        positiveSurprises = 0;
+        negativeSurprises = 0;
 
         board1 = new Board(difficulty);
         board2 = new Board(difficulty);
 
-        // Set the boards in the game manager so it can reveal cells
-        gameManager.setBoard(board1);  // We'll switch boards when needed
+        gameManager.setBoard(board1);
 
         int size = switch (difficulty) {
             case EASY -> 9;
@@ -434,15 +463,12 @@ public class Main {
 
         gameBoardView = new GameBoardView(boardController, p1, p2, size);
 
-        // at start we draw all cells as hidden for both players
         updateBoardDisplay(1, board1);
         updateBoardDisplay(2, board2);
 
-        // mines-left starts with total mines for each board
         gameBoardView.updateMinesLeft(1, board1.getTotalMines());
         gameBoardView.updateMinesLeft(2, board2.getTotalMines());
 
-        // shared score and lives also start here
         currentPlayer = 1;
         gameBoardView.updateScore(0);
         gameBoardView.updateLives(gameManager.getMaxLives());
@@ -453,7 +479,6 @@ public class Main {
 
     // ---------------- Helpers -------------------
 
-    // helper to redraw a whole board, used after flood fill or any big reveal
     private void updateBoardDisplay(int playerNum, Board board) {
         for (int r = 0; r < board.getRows(); r++) {
             for (int c = 0; c < board.getCols(); c++) {
@@ -469,28 +494,70 @@ public class Main {
         }
     }
 
-    // switch to the other player, but also check if one or both boards are already fully done
+    private void endGameAndShowSummary(boolean winByBoardsFinished) {
+        if (gameBoardView != null) {
+            gameBoardView.stopTimer();
+        }
+
+        int durationSeconds = (gameBoardView != null) ? gameBoardView.getElapsedSeconds() : 0;
+        int finalScore = gameManager.getScore();
+        int livesRemaining = gameManager.getLives();
+        Difficulty difficulty = board1.getDifficulty();
+
+        LocalDateTime now = LocalDateTime.now();
+
+        History history = new History(
+                now,
+                player1Name,
+                player2Name,
+                difficulty.name(),
+                winByBoardsFinished,
+                finalScore,
+                durationSeconds,
+                minesHit,
+                questionsAnswered,
+                correctQuestions,
+                wrongQuestions,
+                surprisesTriggered,
+                positiveSurprises,
+                negativeSurprises,
+                livesRemaining,
+                currentUser
+        );
+
+        SysData.addHistory(history);
+
+        view.GameSummaryView summary = new view.GameSummaryView(
+                new SummaryControllerImpl(),
+                player1Name,
+                player2Name,
+                difficulty.name(),
+                winByBoardsFinished,
+                finalScore,
+                durationSeconds,
+                minesHit,
+                questionsAnswered,
+                correctQuestions,
+                wrongQuestions,
+                surprisesTriggered,
+                positiveSurprises,
+                negativeSurprises,
+                livesRemaining
+        );
+        summary.show();
+    }
+
     private void switchTurn() {
-        // if both boards finished -> end game and show a win message
         boolean p1Done = board1.isFinished();
         boolean p2Done = board2.isFinished();
 
         if (p1Done && p2Done) {
             gameBoardView.updateStatus("Game Over! Both boards are fully revealed.");
             gameBoardView.updateTurnVisuals(0);
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Game Over! All cells on both boards are revealed.You Have Won!!",
-                    "Game Over",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-            // back to main menu
-            if (gameBoardView != null) gameBoardView.close();
-            mainMenu.show();
+            endGameAndShowSummary(true);
             return;
         }
 
-        // normal turn switch, but skip finished board so we dont give turns to a solved board
         int next = currentPlayer == 1 ? 2 : 1;
         if (next == 1 && p1Done) {
             next = 2;
@@ -499,14 +566,11 @@ public class Main {
         }
 
         currentPlayer = next;
-
         gameBoardView.updateTurnVisuals(currentPlayer);
     }
 
-
     // ---------------- "Question Cell" popup -------------------
 
-    // Helper method to style dialogs and buttons to match the game theme
     private void styleDialog(JDialog dialog) {
         dialog.setBackground(new Color(15, 25, 30));
         dialog.getContentPane().setBackground(new Color(15, 25, 30));
@@ -535,7 +599,6 @@ public class Main {
         return btn;
     }
 
-    // this popup is shown when we open a question cell and the player must pick pass or answer
     private void showQuestionChoiceDialog(int playerNum, int row, int col) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Question Cell");
@@ -564,7 +627,6 @@ public class Main {
         passBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         answerBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // pass turn: we just reveal the Q, paint it yellow and give the next player the turn
         passBtn.addActionListener(e -> {
             dialog.dispose();
 
@@ -577,7 +639,6 @@ public class Main {
             switchTurn();
         });
 
-        // answer: we reveal the cell and also run flood fill if needed, then open the question dialog
         answerBtn.addActionListener(e -> {
             dialog.dispose();
 
@@ -588,7 +649,6 @@ public class Main {
             currentBoard.reveal(row, col);
             updateBoardDisplay(playerNum, currentBoard);
 
-            // we save which question this was so later we can mark it as “attempted”
             lastQuestionPlayer = playerNum;
             lastQuestionRow = row;
             lastQuestionCol = col;
@@ -605,7 +665,6 @@ public class Main {
 
     // ---------------- Surprise Cell popup -------------------
 
-    // this popup is for surprise cells, same idea but with random effect instead of a question
     private void showSurpriseChoiceDialog(int playerNum, int row, int col) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Surprise Cell");
@@ -634,7 +693,6 @@ public class Main {
         passBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         activateBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // pass: we reveal S, mark that we passed it so it becomes darker but can still be used later
         passBtn.addActionListener(e -> {
             dialog.dispose();
 
@@ -642,15 +700,14 @@ public class Main {
             Cell cell = currentBoard.getCell(row, col);
 
             cell.setState(CellState.REVEALED);
-            cell.setSurprisePassed(true);      // mark as passed so we paint it darker and keep it active
-            cell.setReadyForSurprise(false);   // not used yet
+            cell.setSurprisePassed(true);
+            cell.setReadyForSurprise(false);
 
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
 
             switchTurn();
         });
 
-        // activate: we pay open cost, apply random good/bad effect and lock this surprise
         activateBtn.addActionListener(e -> {
             dialog.dispose();
 
@@ -663,34 +720,37 @@ public class Main {
             }
 
             cell.setSurprisePassed(false);
-            cell.setReadyForSurprise(true);    // used, no more clicking
+            cell.setReadyForSurprise(true);
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
 
-            // Capture open cost before deducting it
             int openCost = gameManager.getBaseOpenCost();
-            
             gameManager.applyOpenCost();
+
             boolean positive = Math.random() < 0.5;
-            
-            // Get the effect outcome before applying
-            int effectPoints = positive 
-                    ? gameManager.getGoodEffectPoints() 
+            int effectPoints = positive
+                    ? gameManager.getGoodEffectPoints()
                     : gameManager.getBadEffectPoints();
-            
+
+            surprisesTriggered++;
+            if (positive) {
+                positiveSurprises++;
+            } else {
+                negativeSurprises++;
+            }
+
             if (positive) gameManager.applyPositiveEffect();
             else gameManager.applyNegativeEffect();
 
-            // Create result object with full breakdown (open cost + effect outcome)
             int livesChange = positive ? 1 : -1;
             String effectDesc = positive ? "Good Surprise! Gained effect" : "Bad Surprise! Negative effect";
             GameManger.QuestionResult result = new GameManger.QuestionResult(
-                    positive,  // isCorrect = true for positive, false for negative
-                    effectPoints, 
-                    livesChange, 
+                    positive,
+                    effectPoints,
+                    livesChange,
                     openCost,
                     effectDesc
             );
-            
+
             showQuestionAnswerMessage(result);
             gameBoardView.updateScore(gameManager.getScore());
             gameBoardView.updateLives(gameManager.getLives());
@@ -705,7 +765,7 @@ public class Main {
         dialog.setVisible(true);
     }
 
-    // ---------------- Question Dialog (placeholder) -------------------
+    // ---------------- Question Dialog -------------------
 
     private void openQuestionDialog(@SuppressWarnings("unused") int playerNum) {
         Questions q = SysData.getRandomQuestion(currentQuestionDifficulty);
@@ -714,8 +774,7 @@ public class Main {
                     "No questions left for this difficulty.",
                     "No Questions",
                     JOptionPane.INFORMATION_MESSAGE);
-            // still switch turn after “answering nothing”
-            handleQuestionAnswer(null, false); // or just switchTurn()
+            handleQuestionAnswer(null, false);
             return;
         }
 
@@ -747,7 +806,6 @@ public class Main {
         c.setAlignmentX(Component.CENTER_ALIGNMENT);
         d.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Timer label for countdown
         JLabel timerLabel = new JLabel("Time: 20", SwingConstants.CENTER);
         timerLabel.setFont(new java.awt.Font("Tahoma", java.awt.Font.BOLD, 20));
         timerLabel.setForeground(new java.awt.Color(0, 200, 255));
@@ -755,16 +813,13 @@ public class Main {
         mainPanel.add(timerLabel);
         mainPanel.add(Box.createVerticalStrut(8));
 
-        // Array to track if a button was clicked (to prevent multiple answers)
         final boolean[] answered = {false};
 
-        // Countdown timer: 20 seconds
         final int[] timeRemaining = {20};
         Timer questionTimer = new Timer(1000, e -> {
             timeRemaining[0]--;
             timerLabel.setText("Time: " + timeRemaining[0]);
 
-            // When time runs out, auto-fail the question
             if (timeRemaining[0] <= 0) {
                 ((Timer) e.getSource()).stop();
                 if (!answered[0]) {
@@ -775,7 +830,7 @@ public class Main {
                             "Time Out",
                             JOptionPane.INFORMATION_MESSAGE
                     );
-                    handleQuestionAnswer(dialog, false); // fail the question
+                    handleQuestionAnswer(dialog, false);
                 }
             }
         });
@@ -810,7 +865,6 @@ public class Main {
             }
         });
 
-        // Store timer reference so we can stop it when dialog closes
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
@@ -825,35 +879,33 @@ public class Main {
         mainPanel.add(c);
         mainPanel.add(Box.createVerticalStrut(5));
         mainPanel.add(d);
-        
+
         dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
-
     // after answering a question we pay the open cost, apply effect and mark the Q as attempted
     private void handleQuestionAnswer(JDialog dialog, boolean isCorrect) {
-        // Record the attempt cost before deducting
         int attemptCost = gameManager.getBaseOpenCost();
         gameManager.applyOpenCost();
 
-        // Set the question difficulty in the game manager
         gameManager.setCurrentQuestionDifficulty(currentQuestionDifficulty);
 
-        // Set the current board so GameManager can reveal cells if needed
         Board currentBoard = (lastQuestionPlayer == 1) ? board1 : board2;
         gameManager.setBoard(currentBoard);
 
-        // Process the question answer and get the result
         GameManger.QuestionResult result = gameManager.processQuestionAnswer(isCorrect);
-        
-        // Set the attempt cost in the result
         result.attemptCost = attemptCost;
 
-        // Show message about the answer result with detailed breakdown
+        questionsAnswered++;
+        if (result.isCorrect) {
+            correctQuestions++;
+        } else {
+            wrongQuestions++;
+        }
+
         showQuestionAnswerMessage(result);
 
-        // Update the board display if any cells were revealed
         if (!result.cellsRevealed.isEmpty()) {
             updateBoardDisplay(lastQuestionPlayer, currentBoard);
         }
@@ -865,7 +917,6 @@ public class Main {
             dialog.dispose();
         }
 
-        // if we still remember which question this was, we paint it as attempted (darker Q, disabled)
         if (lastQuestionPlayer != -1 &&
                 lastQuestionRow != -1 &&
                 lastQuestionCol != -1) {
@@ -881,9 +932,9 @@ public class Main {
             }
         }
 
-        // after handling the question we pass the turn to the other player
         switchTurn();
     }
+
     private void showQuestionDifficultyDialog(int playerNum) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Select Question Difficulty");
@@ -952,8 +1003,4 @@ public class Main {
 
         dialog.setVisible(true);
     }
-    
-
-
-
 }

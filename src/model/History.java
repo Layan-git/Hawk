@@ -1,8 +1,11 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class History {
+public class History implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     // --------- Fields ---------
 
@@ -23,21 +26,18 @@ public class History {
     // how long the whole game took (in seconds)
     private long durationSeconds;
 
-    // stats from the game – can be shown in history / stats screen (unused attributes will be implemented in the future)
+    // stats from the game – can be shown in history / stats screen
     private int minesHit;
     private int questionsAnswered;
     private int correctQuestions;
-    @SuppressWarnings("unused")
     private int wrongQuestions;
-    @SuppressWarnings("unused")
     private int surprisesTriggered;
-    @SuppressWarnings("unused")
     private int positiveSurprises;
-    @SuppressWarnings("unused")
     private int negativeSurprises;
-    @SuppressWarnings("unused")
     private int livesRemaining;
 
+    // who was logged in when playing
+    private String username;
 
     // --------- Constructors ---------
 
@@ -60,7 +60,8 @@ public class History {
                    int surprisesTriggered,
                    int positiveSurprises,
                    int negativeSurprises,
-                   int livesRemaining) {
+                   int livesRemaining,
+                   String username) {
         this.dateTime = dateTime;
         this.player1Name = player1Name;
         this.player2Name = player2Name;
@@ -76,8 +77,8 @@ public class History {
         this.positiveSurprises = positiveSurprises;
         this.negativeSurprises = negativeSurprises;
         this.livesRemaining = livesRemaining;
+        this.username = username;
     }
-
 
     // --------- Getters and Setters ---------
 
@@ -155,5 +156,57 @@ public class History {
 
     public int getCorrectQuestions() {
         return correctQuestions;
+    }
+
+    public void setCorrectQuestions(int correctQuestions) {
+        this.correctQuestions = correctQuestions;
+    }
+
+    public int getWrongQuestions() {
+        return wrongQuestions;
+    }
+
+    public void setWrongQuestions(int wrongQuestions) {
+        this.wrongQuestions = wrongQuestions;
+    }
+
+    public int getSurprisesTriggered() {
+        return surprisesTriggered;
+    }
+
+    public void setSurprisesTriggered(int surprisesTriggered) {
+        this.surprisesTriggered = surprisesTriggered;
+    }
+
+    public int getPositiveSurprises() {
+        return positiveSurprises;
+    }
+
+    public void setPositiveSurprises(int positiveSurprises) {
+        this.positiveSurprises = positiveSurprises;
+    }
+
+    public int getNegativeSurprises() {
+        return negativeSurprises;
+    }
+
+    public void setNegativeSurprises(int negativeSurprises) {
+        this.negativeSurprises = negativeSurprises;
+    }
+
+    public int getLivesRemaining() {
+        return livesRemaining;
+    }
+
+    public void setLivesRemaining(int livesRemaining) {
+        this.livesRemaining = livesRemaining;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }
