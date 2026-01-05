@@ -292,7 +292,7 @@ public class Board {
         int count = 0;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if (cells[r][c].isMine() && !cells[r][c].isRevealed()) {
+                if (cells[r][c].isMine() && !cells[r][c].isRevealed() && !cells[r][c].isFlagged()) {
                     count++;
                 }
             }

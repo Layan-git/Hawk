@@ -157,7 +157,6 @@ public class MainMenu {
         manageBtn.setBounds(20, 400, 240, 40);
         sidePanel.add(manageBtn);
         styleMenuButton(manageBtn);
-        manageBtn.addActionListener(e -> controller.openManageQuestions());
         
         JButton howBtn = new JButton("How to Play");
         howBtn.setBounds(20, 450, 240, 40);

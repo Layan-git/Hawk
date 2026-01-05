@@ -1,6 +1,7 @@
 package controller;
 
 import java.awt.*;
+import java.awt.event.ActionListener;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import model.Board;
@@ -28,7 +29,7 @@ public class Main {
 
     public static interface GameSetupController {
         void backToMenu();
-        void confirmStart(String player1, String player2, Difficulty difficulty);
+        void confirmStart(String player1, String player2, Difficulty difficulty, int player1CharIndex, int player2CharIndex);
     }
 
     public static interface GameBoardController {
@@ -42,6 +43,10 @@ public class Main {
     private GameSetup gameSetup;
     private GameBoardView gameBoardView;
     private GameManger gameManager;
+    
+    // User tracking
+    private String currentUser = null;
+    private boolean isAdmin = false;
     
  // in Main class, add a field:
     private view.QuestionsManager questionsManager;
@@ -62,6 +67,9 @@ public class Main {
     private int lastQuestionRow = -1;
     private int lastQuestionCol = -1;
     
+    // Stabilizer usage tracking (once per game)
+    private boolean stabilizerUsed = false;
+    
  // question difficulty chosen by player: 1 = Easy, 2 = Medium, 3 = Hard, 4 = Advanced
     private int currentQuestionDifficulty = 1;
 
@@ -75,14 +83,69 @@ public class Main {
         public void startGame() { showSetup(); }
 
         @Override
-        public void openHistory() {}
+        public void openHistory() {
+            view.HistoryView historyView = new view.HistoryView(currentUser, isAdmin);
+            historyView.show();
+        }
 
         @Override
         public void openManageQuestions() {
-            if (questionsManager == null) {
-                questionsManager = new view.QuestionsManager();
-            }
-            questionsManager.show();
+            // Use array to hold reference so it can be modified in inner class
+            final view.LoginView[] loginViewHolder = new view.LoginView[1];
+
+            // Show login dialog to authenticate before allowing access
+            view.LoginView.LoginController loginController = new view.LoginView.LoginController() {
+                @Override
+                public void onLogin(String username, String password) {
+                    if (username == null || username.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                null,
+                                "Please enter a username.",
+                                "Login",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                    }
+
+                    // Simple auth: "admin" is required to manage questions
+                    if (!"admin".equalsIgnoreCase(username)) {
+                        JOptionPane.showMessageDialog(
+                                null,
+                                "Only admin can manage questions.",
+                                "Access Denied",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                    }
+
+                    // Store current user info
+                    isAdmin = true;
+                    currentUser = username;
+
+                    // Close the login dialog
+                    if (loginViewHolder[0] != null) {
+                        loginViewHolder[0].close();
+                    }
+
+                    // Show questions manager
+                    if (questionsManager == null) {
+                        questionsManager = new view.QuestionsManager();
+                    }
+                    questionsManager.show();
+                }
+
+                @Override
+                public void onExit() {
+                    // User cancelled login, just close the dialog and stay in menu
+                    if (loginViewHolder[0] != null) {
+                        loginViewHolder[0].close();
+                    }
+                }
+            };
+
+            // Create and store LoginView with proper controller
+            loginViewHolder[0] = new view.LoginView(loginController);
+            loginViewHolder[0].show();
         }
 
         @Override
@@ -116,10 +179,10 @@ public class Main {
         }
 
         @Override
-        public void confirmStart(String p1, String p2, Difficulty d) {
+        public void confirmStart(String p1, String p2, Difficulty d, int p1CharIndex, int p2CharIndex) {
             player1Name = p1;
             player2Name = p2;
-            startGameBoard(p1, p2, d);
+            startGameBoard(p1, p2, d, p1CharIndex, p2CharIndex);
         }
     };
 
@@ -237,18 +300,57 @@ public class Main {
                 return;
 
             // ---------------- MINE -----------------
-            // if we hit a hidden mine we reveal it, take a life and maybe end the game
+            // if we hit a hidden mine we check for Safety Net, Stabilizer, or normal mine hit
             if (cell.isMine() && cell.isHidden()) {
+                // Check if Safety Net is active
+                if (gameManager.consumeSafetyNet()) {
+                    // Safety Net activated: mine is auto-flagged, no damage
+                    cell.setState(CellState.FLAGGED);
+                    gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
+                    gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                    gameBoardView.updateShopButtons(gameManager.getScore(), 
+                            gameManager.isSafetyNetActive(), 
+                            gameManager.isMetalDetectorActive(),
+                            gameManager.getSafetyNetPurchases(),
+                            gameManager.getMetalDetectorPurchases());
+                    gameBoardView.updateShopStatus("Safety Net activated! Mine disabled.");
+                    
+                    JOptionPane.showMessageDialog(
+                            null,
+                            "Safety Net activated!\nThe mine was automatically flagged and disabled.",
+                            "Safety Net",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                    
+                    switchTurn();
+                    return;
+                }
+                
+                // Check if player is on last life and Stabilizer hasn't been used yet
+                if (gameManager.isOnLastLife() && !stabilizerUsed) {
+                    // Trigger Stabilizer: present a question (once per game)
+                    stabilizerUsed = true;
+                    showStabilizerQuestion(playerNum, row, col);
+                    return;
+                }
+                
+                // Normal mine hit
                 currentBoard.reveal(row, col);
                 updateBoardDisplay(playerNum, currentBoard);
 
                 gameManager.processMineHit();
                 gameBoardView.updateLives(gameManager.getLives());
                 gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                
+                // Update momentum display (reset)
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
 
                 JOptionPane.showMessageDialog(
                         null,
-                        "Boom! You stepped on a mine.\nYou lost 1 life.",
+                        "Boom! You stepped on a mine.\nYou lost 1 life.\nMomentum multiplier reset!",
                         "Mine Hit",
                         JOptionPane.ERROR_MESSAGE
                 );
@@ -261,7 +363,7 @@ public class Main {
                             "Game Over",
                             JOptionPane.ERROR_MESSAGE
                     );
-                    quitToMenu();
+                    boardController.quitToMenu();
                     return;
                 }
 
@@ -285,13 +387,27 @@ public class Main {
             }
 
             // ---------------- SAFE CELL (EMPTY or NUMBER) -----------------
-            // normal safe cell, we open it, update view, give +1 point and move to the other player
+            // normal safe cell, we open it, update view, award points with momentum bonus
             if (cell.isHidden() && (cell.isSafe())) {
                 currentBoard.reveal(row, col);
                 updateBoardDisplay(playerNum, currentBoard);
 
-                gameManager.awardSafeCellPoint();  // +1 point
+                gameManager.awardSafeCellWithMomentum();
                 gameBoardView.updateScore(gameManager.getScore());
+                
+                // Update momentum display
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
+                
+                // Update shop buttons in case score changed
+                gameBoardView.updateShopButtons(gameManager.getScore(), 
+                        gameManager.isSafetyNetActive(), 
+                        gameManager.isMetalDetectorActive(),
+                        gameManager.getSafetyNetPurchases(),
+                        gameManager.getMetalDetectorPurchases());
+                
                 switchTurn();
             }
         }
@@ -354,6 +470,13 @@ public class Main {
 
             // update score label
             gameBoardView.updateScore(gameManager.getScore());
+            
+            // Update shop buttons after score change
+            gameBoardView.updateShopButtons(gameManager.getScore(), 
+                    gameManager.isSafetyNetActive(), 
+                    gameManager.isMetalDetectorActive(),
+                    gameManager.getSafetyNetPurchases(),
+                    gameManager.getMetalDetectorPurchases());
 
             // redraw this cell based on its new state/type
             cell = currentBoard.getCell(row, col); // re-fetch if needed
@@ -412,13 +535,16 @@ public class Main {
     // ---------------- Start Game -------------------
 
     // here we actually create the 2 boards and the game manager and open the game window
-    private void startGameBoard(String p1, String p2, Difficulty difficulty) {
+    private void startGameBoard(String p1, String p2, Difficulty difficulty, int p1CharIndex, int p2CharIndex) {
         if (gameSetup != null) gameSetup.close();
         gameManager = new GameManger();
         gameManager.GameManager(difficulty);
 
         // NEW: reset used question tracking for a fresh game
         model.SysData.resetAskedQuestions();
+        
+        // Reset Stabilizer usage for new game
+        stabilizerUsed = false;
 
         board1 = new Board(difficulty);
         board2 = new Board(difficulty);
@@ -432,7 +558,10 @@ public class Main {
             case HARD -> 16;
         };
 
-        gameBoardView = new GameBoardView(boardController, p1, p2, size);
+        gameBoardView = new GameBoardView(boardController, p1, p2, size, p1CharIndex, p2CharIndex);
+        
+        // Set board references for metal detector
+        gameBoardView.setBoards(board1, board2);
 
         // at start we draw all cells as hidden for both players
         updateBoardDisplay(1, board1);
@@ -448,6 +577,84 @@ public class Main {
         gameBoardView.updateLives(gameManager.getMaxLives());
         gameBoardView.updateStatus("Game Started!");
         gameBoardView.updateTurnVisuals(1);
+        
+        // Initialize shop UI
+        gameBoardView.updateMomentumDisplay(0, "No bonus (5 more for Tier 1)");
+        gameBoardView.updateShopButtons(0, false, false, 0, 0);
+        gameBoardView.updateShopStatus("");
+        
+        // Set shop button listeners
+        gameBoardView.setShopButtonListeners(
+            // Safety Net purchase
+            () -> {
+                if (gameManager.purchaseSafetyNet()) {
+                    gameBoardView.updateScore(gameManager.getScore());
+                    gameBoardView.updateShopButtons(gameManager.getScore(), 
+                            gameManager.isSafetyNetActive(), 
+                            gameManager.isMetalDetectorActive(),
+                            gameManager.getSafetyNetPurchases(),
+                            gameManager.getMetalDetectorPurchases());
+                    gameBoardView.updateShopStatus("Safety Net purchased! Next mine will be disabled.");
+                    JOptionPane.showMessageDialog(null,
+                            "Safety Net purchased!\nThe next mine you click will be automatically flagged.",
+                            "Purchase Successful",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(null,
+                            "Cannot purchase Safety Net.\nRequires 10 points and not already active.",
+                            "Purchase Failed",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            },
+            // Metal Detector purchase
+            () -> {
+                if (gameManager.purchaseMetalDetector()) {
+                    gameBoardView.updateScore(gameManager.getScore());
+                    gameBoardView.updateShopButtons(gameManager.getScore(), 
+                            gameManager.isSafetyNetActive(), 
+                            gameManager.isMetalDetectorActive(),
+                            gameManager.getSafetyNetPurchases(),
+                            gameManager.getMetalDetectorPurchases());
+                    
+                    JOptionPane.showMessageDialog(null,
+                            "Metal Detector purchased!\nHover over cells - cursor will change color over mines.",
+                            "Purchase Successful",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    
+                    // Start timer AFTER user clicks OK
+                    gameManager.startMetalDetector();
+                    gameBoardView.setMetalDetectorActive(true);
+                    gameBoardView.updateShopStatus("Metal Detector active!");
+                    
+                    // Start a timer to update the countdown
+                    Timer detectorTimer = new Timer(100, null);
+                    detectorTimer.addActionListener(e -> {
+                        long remaining = gameManager.getMetalDetectorTimeRemaining();
+                        if (remaining > 0) {
+                            double seconds = remaining / 1000.0;
+                            gameBoardView.updateMetalDetectorTimer(seconds);
+                        } else {
+                            gameBoardView.updateMetalDetectorTimer(0);
+                            gameBoardView.updateShopStatus("");
+                            gameBoardView.setMetalDetectorActive(false);
+                            gameBoardView.updateShopButtons(gameManager.getScore(), 
+                                    gameManager.isSafetyNetActive(), 
+                                    gameManager.isMetalDetectorActive(),
+                                    gameManager.getSafetyNetPurchases(),
+                                    gameManager.getMetalDetectorPurchases());
+                            detectorTimer.stop();
+                        }
+                    });
+                    detectorTimer.start();
+                } else {
+                    JOptionPane.showMessageDialog(null,
+                            "Cannot purchase Metal Detector.\nRequires 15 points.",
+                            "Purchase Failed",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        );
+        
         gameBoardView.show();
     }
 
@@ -478,15 +685,72 @@ public class Main {
         if (p1Done && p2Done) {
             gameBoardView.updateStatus("Game Over! Both boards are fully revealed.");
             gameBoardView.updateTurnVisuals(0);
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Game Over! All cells on both boards are revealed.You Have Won!!",
-                    "Game Over",
-                    JOptionPane.INFORMATION_MESSAGE
+            
+            // Show game summary
+            if (gameBoardView != null) {
+                gameBoardView.stopTimer();
+            }
+
+            int durationSeconds = (gameBoardView != null) ? gameBoardView.getElapsedSeconds() : 0;
+            int finalScore = gameManager.getScore();
+            int livesRemaining = gameManager.getLives();
+            String difficulty = board1.getDifficulty().name();
+
+            // Save to history
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            model.History history = new model.History(
+                    now,
+                    player1Name,
+                    player2Name,
+                    difficulty,
+                    true,  // they won
+                    finalScore,
+                    durationSeconds,
+                    0,  // minesHit - not tracked in this version
+                    0,  // questionsAnswered - not tracked in this version
+                    0,  // correctQuestions - not tracked in this version
+                    0,  // wrongQuestions - not tracked
+                    0,  // surprisesTriggered - not tracked
+                    0,  // positiveSurprises - not tracked
+                    0,  // negativeSurprises - not tracked
+                    livesRemaining,
+                    currentUser
             );
-            // back to main menu
+            model.SysData.addHistory(history);
+
+            // Create and show summary
+            view.GameSummaryView summary = new view.GameSummaryView(
+                    new view.GameSummaryView.SummaryController() {
+                        @Override
+                        public void onPlayAgain() {
+                            if (gameBoardView != null) gameBoardView.close();
+                            showSetup();
+                        }
+
+                        @Override
+                        public void onBackToMenu() {
+                            if (gameBoardView != null) gameBoardView.close();
+                            mainMenu.show();
+                        }
+                    },
+                    player1Name,
+                    player2Name,
+                    difficulty,
+                    true,  // win
+                    finalScore,
+                    durationSeconds,
+                    0,  // minesHit
+                    0,  // questionsAnswered
+                    0,  // correctQuestions
+                    0,  // wrongQuestions
+                    0,  // surprisesTriggered
+                    0,  // positiveSurprises
+                    0,  // negativeSurprises
+                    livesRemaining
+            );
+            summary.show();
+            
             if (gameBoardView != null) gameBoardView.close();
-            mainMenu.show();
             return;
         }
 
@@ -860,6 +1124,13 @@ public class Main {
 
         gameBoardView.updateScore(gameManager.getScore());
         gameBoardView.updateLives(gameManager.getLives());
+        
+        // Update shop buttons after score/lives change
+        gameBoardView.updateShopButtons(gameManager.getScore(), 
+                gameManager.isSafetyNetActive(), 
+                gameManager.isMetalDetectorActive(),
+                gameManager.getSafetyNetPurchases(),
+                gameManager.getMetalDetectorPurchases());
 
         if (dialog != null) {
             dialog.dispose();
@@ -884,6 +1155,200 @@ public class Main {
         // after handling the question we pass the turn to the other player
         switchTurn();
     }
+    
+    // ---------------- Stabilizer Question (Last Life) -------------------
+    
+    private void showStabilizerQuestion(int playerNum, int row, int col) {
+        gameBoardView.pauseTimer();
+        
+        // Get a random easy/medium question for stabilizer
+        Questions q = SysData.getRandomQuestion(1); // Easy question
+        if (q == null) {
+            // No question available, mine explodes
+            Board currentBoard = (playerNum == 1) ? board1 : board2;
+            currentBoard.reveal(row, col);
+            updateBoardDisplay(playerNum, currentBoard);
+            
+            gameManager.processMineHit();
+            gameBoardView.updateLives(gameManager.getLives());
+            gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+            
+            JOptionPane.showMessageDialog(null,
+                    "Stabilizer Failed! No question available.\nMine exploded!",
+                    "Stabilizer Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            
+            if (gameManager.getLives() <= 0) {
+                boardController.quitToMenu();
+                return;
+            }
+            
+            switchTurn();
+            return;
+        }
+        
+        JDialog dialog = new JDialog();
+        dialog.setTitle("⚠️ STABILIZER ACTIVATED - LAST LIFE! ⚠️");
+        dialog.setModal(true);
+        dialog.setSize(600, 450);
+        dialog.setLocationRelativeTo(null);
+        styleDialog(dialog);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(new Color(15, 25, 30));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel warning = new JLabel("<html><center>⚠️ YOU ARE ON YOUR LAST LIFE! ⚠️<br>"
+                + "Answer this question to disable the mine!</center></html>", SwingConstants.CENTER);
+        warning.setFont(new Font("Tahoma", Font.BOLD, 16));
+        warning.setForeground(new Color(255, 50, 50));
+        warning.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(warning);
+        mainPanel.add(Box.createVerticalStrut(15));
+
+        JLabel label = new JLabel("<html>" + q.getText() + "</html>", SwingConstants.CENTER);
+        label.setFont(new Font("Tahoma", Font.BOLD, 14));
+        label.setForeground(new Color(0, 200, 255));
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(label);
+        mainPanel.add(Box.createVerticalStrut(10));
+
+        JButton a = createThemedButton("A) " + q.getOptA());
+        JButton b = createThemedButton("B) " + q.getOptB());
+        JButton c = createThemedButton("C) " + q.getOptC());
+        JButton d = createThemedButton("D) " + q.getOptD());
+        a.setAlignmentX(Component.CENTER_ALIGNMENT);
+        b.setAlignmentX(Component.CENTER_ALIGNMENT);
+        c.setAlignmentX(Component.CENTER_ALIGNMENT);
+        d.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Timer for 20 seconds
+        JLabel timerLabel = new JLabel("Time: 20", SwingConstants.CENTER);
+        timerLabel.setFont(new Font("Tahoma", Font.BOLD, 20));
+        timerLabel.setForeground(new Color(255, 100, 100));
+        timerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(timerLabel);
+        mainPanel.add(Box.createVerticalStrut(10));
+
+        final boolean[] answered = {false};
+        Timer countdownTimer = new Timer(1000, null);
+        final int[] timeLeft = {20};
+
+        ActionListener answerListener = e -> {
+            if (answered[0]) return;
+            answered[0] = true;
+            countdownTimer.stop();
+
+            JButton clicked = (JButton) e.getSource();
+            String choice = clicked.getText().substring(0, 1).toUpperCase();
+            boolean isCorrect = choice.equals(q.getCorrectAnswer());
+
+            Board currentBoard = (playerNum == 1) ? board1 : board2;
+            gameManager.processStabilizerQuestion(isCorrect);
+
+            if (isCorrect) {
+                // Success: flag the mine
+                Cell cell = currentBoard.getCell(row, col);
+                cell.setState(CellState.FLAGGED);
+                gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
+                gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                
+                JOptionPane.showMessageDialog(null,
+                        "Correct! The mine has been disabled and flagged.\nYou survived!",
+                        "Stabilizer Success",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                // Failure: mine explodes
+                currentBoard.reveal(row, col);
+                updateBoardDisplay(playerNum, currentBoard);
+                gameBoardView.updateLives(gameManager.getLives());
+                gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                
+                // Update momentum display (reset)
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
+                
+                JOptionPane.showMessageDialog(null,
+                        "Wrong answer! The mine exploded.\nGame Over!",
+                        "Stabilizer Failed",
+                        JOptionPane.ERROR_MESSAGE);
+                
+                if (gameManager.getLives() <= 0) {
+                    dialog.dispose();
+                    gameBoardView.resumeTimer();
+                    boardController.quitToMenu();
+                    return;
+                }
+            }
+
+            dialog.dispose();
+            gameBoardView.resumeTimer();
+            switchTurn();
+        };
+
+        a.addActionListener(answerListener);
+        b.addActionListener(answerListener);
+        c.addActionListener(answerListener);
+        d.addActionListener(answerListener);
+
+        countdownTimer.addActionListener(e -> {
+            timeLeft[0]--;
+            timerLabel.setText("Time: " + timeLeft[0]);
+            
+            if (timeLeft[0] <= 0) {
+                countdownTimer.stop();
+                if (!answered[0]) {
+                    answered[0] = true;
+                    
+                    // Timeout = failure
+                    Board currentBoard = (playerNum == 1) ? board1 : board2;
+                    gameManager.processStabilizerQuestion(false);
+                    
+                    currentBoard.reveal(row, col);
+                    updateBoardDisplay(playerNum, currentBoard);
+                    gameBoardView.updateLives(gameManager.getLives());
+                    gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
+                    
+                    // Update momentum display (reset)
+                    gameBoardView.updateMomentumDisplay(
+                            gameManager.getConsecutiveSafeCells(),
+                            gameManager.getMomentumTierDescription()
+                    );
+                    
+                    JOptionPane.showMessageDialog(null,
+                            "Time's up! The mine exploded.\nGame Over!",
+                            "Stabilizer Failed",
+                            JOptionPane.ERROR_MESSAGE);
+                    
+                    dialog.dispose();
+                    gameBoardView.resumeTimer();
+                    
+                    if (gameManager.getLives() <= 0) {
+                        boardController.quitToMenu();
+                        return;
+                    }
+                    
+                    switchTurn();
+                }
+            }
+        });
+
+        mainPanel.add(a);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(b);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(c);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(d);
+
+        dialog.add(mainPanel);
+        countdownTimer.start();
+        dialog.setVisible(true);
+    }
+    
     private void showQuestionDifficultyDialog(int playerNum) {
         JDialog dialog = new JDialog();
         dialog.setTitle("Select Question Difficulty");

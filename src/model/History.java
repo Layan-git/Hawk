@@ -10,6 +10,8 @@ public class History {
 
     private String player1Name;         // name shown on left board
     private String player2Name;         // name shown on right board
+    
+    private String username;            // username of the player who played
 
     // e.g. "Easy", "Medium", "Hard" – stored as text for display
     private String difficulty;
@@ -60,7 +62,8 @@ public class History {
                    int surprisesTriggered,
                    int positiveSurprises,
                    int negativeSurprises,
-                   int livesRemaining) {
+                   int livesRemaining,
+                   String username) {
         this.dateTime = dateTime;
         this.player1Name = player1Name;
         this.player2Name = player2Name;
@@ -76,6 +79,7 @@ public class History {
         this.positiveSurprises = positiveSurprises;
         this.negativeSurprises = negativeSurprises;
         this.livesRemaining = livesRemaining;
+        this.username = username;
     }
 
 
@@ -155,5 +159,13 @@ public class History {
 
     public int getCorrectQuestions() {
         return correctQuestions;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

@@ -50,6 +50,16 @@ public class GameManger {
     private GameStatus status;
     private int currentQuestionDifficulty = 1; // tracks current question difficulty (1=Easy, 2=Medium, 3=Hard, 4=Advanced)
     private final Random random = new Random();
+    
+    // Momentum Multiplier system
+    private int consecutiveSafeCells = 0; // tracks streak of safe clicks
+    
+    // Shop system
+    private boolean safetyNetActive = false;    // one-time use protection
+    private boolean metalDetectorActive = false; // 5-second mine detection
+    private long metalDetectorEndTime = 0;      // timestamp when detector expires
+    private int safetyNetPurchases = 0;         // times purchased (max 3)
+    private int metalDetectorPurchases = 0;     // times purchased (max 3)
 
     // this is acting like an init method (not a real constructor) for now
     public void GameManager(Difficulty difficulty) {
@@ -83,6 +93,26 @@ public class GameManger {
     // when a mine is hit we only touch lives here (no score logic)
     public void processMineHit() {
         loseLife();
+        resetMomentumMultiplier(); // reset streak when mine is hit
+    }
+    
+    // Check if player is on last life (for Stabilizer mechanic)
+    public boolean isOnLastLife() {
+        return lives == 1;
+    }
+    
+    // Process Stabilizer question result (when player is on last life and clicks mine)
+    public QuestionResult processStabilizerQuestion(boolean isCorrect) {
+        if (isCorrect) {
+            // Success: mine is flagged/disabled, game continues
+            // No points or lives change, just survival
+            return new QuestionResult(true, 0, 0, "Stabilizer Success! Mine disabled.");
+        } else {
+            // Failure: mine explodes, lose life, reset multiplier
+            loseLife();
+            resetMomentumMultiplier();
+            return new QuestionResult(false, 0, -1, "Stabilizer Failed! Mine exploded.");
+        }
     }
 
     // -------------------------------
@@ -529,6 +559,117 @@ public class GameManger {
     public int getLives() { return lives; }
     public int getMaxLives() { return maxLives; }
     public GameStatus getStatus() { return status; }
+    
+    // -------------------------------
+    // Momentum Multiplier Methods
+    // -------------------------------
+    
+    // Called when a safe cell is clicked
+    public int awardSafeCellWithMomentum() {
+        consecutiveSafeCells++;
+        
+        // Calculate bonus based on tier
+        int basePoints = 1; // base point for safe cell
+        int bonusPoints = 0;
+        
+        if (consecutiveSafeCells >= 15) {
+            // Tier 2: +2 bonus points per safe cell
+            bonusPoints = 2;
+        } else if (consecutiveSafeCells >= 5) {
+            // Tier 1: +1 bonus point per safe cell
+            bonusPoints = 1;
+        }
+        
+        int totalPoints = basePoints + bonusPoints;
+        addPoints(totalPoints);
+        
+        return totalPoints; // return for UI display
+    }
+    
+    // Called when a mine is clicked - resets multiplier
+    public void resetMomentumMultiplier() {
+        consecutiveSafeCells = 0;
+    }
+    
+    public int getConsecutiveSafeCells() {
+        return consecutiveSafeCells;
+    }
+    
+    public String getMomentumTierDescription() {
+        if (consecutiveSafeCells >= 15) {
+            return "Tier 2 (+2 bonus points)";
+        } else if (consecutiveSafeCells >= 5) {
+            return "Tier 1 (+1 bonus point)";
+        } else {
+            return "No bonus (" + (5 - consecutiveSafeCells) + " more for Tier 1)";
+        }
+    }
+    
+    // -------------------------------
+    // Shop System Methods
+    // -------------------------------
+    
+    // Purchase Safety Net (10 points, max 3 times)
+    public boolean purchaseSafetyNet() {
+        if (score >= 10 && !safetyNetActive && safetyNetPurchases < 3) {
+            addPoints(-10);
+            safetyNetActive = true;
+            safetyNetPurchases++;
+            return true;
+        }
+        return false;
+    }
+    
+    // Purchase Metal Detector (15 points, 5 seconds, max 3 times)
+    public boolean purchaseMetalDetector() {
+        if (score >= 15 && metalDetectorPurchases < 3) {
+            addPoints(-15);
+            metalDetectorPurchases++;
+            return true;
+        }
+        return false;
+    }
+    
+    // Start the metal detector timer (call after user confirms purchase)
+    public void startMetalDetector() {
+        metalDetectorActive = true;
+        metalDetectorEndTime = System.currentTimeMillis() + 5000; // 5 seconds
+    }
+    
+    // Check if Safety Net is active and consume it
+    public boolean consumeSafetyNet() {
+        if (safetyNetActive) {
+            safetyNetActive = false;
+            return true;
+        }
+        return false;
+    }
+    
+    // Check if Metal Detector is currently active
+    public boolean isMetalDetectorActive() {
+        if (metalDetectorActive && System.currentTimeMillis() > metalDetectorEndTime) {
+            metalDetectorActive = false; // expire
+        }
+        return metalDetectorActive;
+    }
+    
+    public boolean isSafetyNetActive() {
+        return safetyNetActive;
+    }
+    
+    public long getMetalDetectorTimeRemaining() {
+        if (!metalDetectorActive) return 0;
+        long remaining = metalDetectorEndTime - System.currentTimeMillis();
+        return Math.max(0, remaining);
+    }
+    
+    public int getSafetyNetPurchases() {
+        return safetyNetPurchases;
+    }
+    
+    public int getMetalDetectorPurchases() {
+        return metalDetectorPurchases;
+    }
 
     public enum RevealOutcome {
         INVALID,

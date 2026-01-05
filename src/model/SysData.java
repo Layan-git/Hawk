@@ -19,6 +19,9 @@ public class SysData {
 
     // All questions in memory
     private static final List<Questions> questionList = new ArrayList<>();
+    
+    // All game histories in memory
+    private static final List<History> historyList = new ArrayList<>();
 
     // For game runtime: track asked question IDs per difficulty (1..4)
     private static final Map<Integer, Set<Integer>> askedQuestionIds = new HashMap<>();
@@ -257,5 +260,32 @@ public class SysData {
         Questions chosen = candidates.get(new java.util.Random().nextInt(candidates.size()));
         asked.add(chosen.getId());
         return chosen;
+    }
+    
+    // ----------------  History Management ----------------
+    
+    // Add a game history record
+    public static void addHistory(History history) {
+        if (history != null) {
+            historyList.add(history);
+        }
+    }
+    
+    // Get all game histories
+    public static List<History> getAllHistories() {
+        return new ArrayList<>(historyList);
+    }
+    
+    // Get histories for a specific user
+    public static List<History> getHistoriesForUser(String username) {
+        List<History> userHistories = new ArrayList<>();
+        if (username != null) {
+            for (History h : historyList) {
+                if (username.equalsIgnoreCase(h.getUsername())) {
+                    userHistories.add(h);
+                }
+            }
+        }
+        return userHistories;
     }
 }
