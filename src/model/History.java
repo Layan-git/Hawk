@@ -1,11 +1,8 @@
 package model;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class History implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class History {
 
     // --------- Fields ---------
 
@@ -13,6 +10,8 @@ public class History implements Serializable {
 
     private String player1Name;         // name shown on left board
     private String player2Name;         // name shown on right board
+    
+    private String username;            // username of the player who played
 
     // e.g. "Easy", "Medium", "Hard" – stored as text for display
     private String difficulty;
@@ -26,18 +25,21 @@ public class History implements Serializable {
     // how long the whole game took (in seconds)
     private long durationSeconds;
 
-    // stats from the game – can be shown in history / stats screen
+    // stats from the game – can be shown in history / stats screen (unused attributes will be implemented in the future)
     private int minesHit;
     private int questionsAnswered;
     private int correctQuestions;
+    @SuppressWarnings("unused")
     private int wrongQuestions;
+    @SuppressWarnings("unused")
     private int surprisesTriggered;
+    @SuppressWarnings("unused")
     private int positiveSurprises;
+    @SuppressWarnings("unused")
     private int negativeSurprises;
+    @SuppressWarnings("unused")
     private int livesRemaining;
 
-    // who was logged in when playing
-    private String username;
 
     // --------- Constructors ---------
 
@@ -79,6 +81,7 @@ public class History implements Serializable {
         this.livesRemaining = livesRemaining;
         this.username = username;
     }
+
 
     // --------- Getters and Setters ---------
 
@@ -156,50 +159,6 @@ public class History implements Serializable {
 
     public int getCorrectQuestions() {
         return correctQuestions;
-    }
-
-    public void setCorrectQuestions(int correctQuestions) {
-        this.correctQuestions = correctQuestions;
-    }
-
-    public int getWrongQuestions() {
-        return wrongQuestions;
-    }
-
-    public void setWrongQuestions(int wrongQuestions) {
-        this.wrongQuestions = wrongQuestions;
-    }
-
-    public int getSurprisesTriggered() {
-        return surprisesTriggered;
-    }
-
-    public void setSurprisesTriggered(int surprisesTriggered) {
-        this.surprisesTriggered = surprisesTriggered;
-    }
-
-    public int getPositiveSurprises() {
-        return positiveSurprises;
-    }
-
-    public void setPositiveSurprises(int positiveSurprises) {
-        this.positiveSurprises = positiveSurprises;
-    }
-
-    public int getNegativeSurprises() {
-        return negativeSurprises;
-    }
-
-    public void setNegativeSurprises(int negativeSurprises) {
-        this.negativeSurprises = negativeSurprises;
-    }
-
-    public int getLivesRemaining() {
-        return livesRemaining;
-    }
-
-    public void setLivesRemaining(int livesRemaining) {
-        this.livesRemaining = livesRemaining;
     }
 
     public String getUsername() {

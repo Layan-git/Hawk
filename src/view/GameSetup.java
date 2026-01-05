@@ -6,17 +6,25 @@ import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
+import model.ResourceLoader;
 
 public class GameSetup {
 
@@ -28,6 +36,17 @@ public class GameSetup {
     private JRadioButton easyBtn;
     private JRadioButton mediumBtn;
     private JRadioButton hardBtn;
+    
+    // Character selection
+    private static final String[] CHARACTER_ICONS = {
+        "/resources/bomb.png", "/resources/gift.png", "/resources/net.png",
+        "/resources/metaldetector.png", "/resources/question.png", "/resources/exit.png"
+    };
+    private static final int NUM_CHARACTERS = 6;
+    private BufferedImage[] characterImages = new BufferedImage[NUM_CHARACTERS];
+    private JButton[][] characterButtons = new JButton[2][NUM_CHARACTERS];
+    private int player1SelectedChar = -1;
+    private int player2SelectedChar = -1;
 
     // this screen only collects names + difficulty, then notifies controller
     public GameSetup(GameSetupController controller) {
@@ -46,6 +65,9 @@ public class GameSetup {
         frame.setBounds(100, 100, W, H);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(null);
+        
+        // Load character icons
+        loadCharacterIcons();
 
         // background panel with gradient (visual only)
         JPanel bg = new JPanel() {
@@ -114,18 +136,23 @@ public class GameSetup {
         });
         leftArea.add(player1Field);
 
-        // 6 placeholder icon buttons under player1
+        // 6 character icon buttons under player1 (2 rows of 3)
         int icW = 96; int icH = 56; int gap = 8;
-        for (int r = 0; r < 2; r++) {
-            for (int c = 0; c < 3; c++) {
-                RoundedButton ib = new RoundedButton("");
-                ib.setBounds(8 + c * (icW + gap), 76 + r * (icH + gap), icW, icH);
-                ib.setText("+");
-                ib.setFont(new Font("Tahoma", Font.BOLD, 20));
-                ib.setForeground(new Color(200, 220, 200));
-                ib.setFocusPainted(false);
-                leftArea.add(ib);
+        for (int c = 0; c < NUM_CHARACTERS; c++) {
+            final int charIndex = c;
+            RoundedButton ib = new RoundedButton("");
+            int row = c / 3;
+            int col = c % 3;
+            ib.setBounds(8 + col * (icW + gap), 76 + row * (icH + gap), icW, icH);
+            if (characterImages[c] != null) {
+                Image scaledImage = characterImages[c].getScaledInstance(icW - 8, icH - 8, Image.SCALE_SMOOTH);
+                ib.setIcon(new ImageIcon(scaledImage));
             }
+            ib.setFocusPainted(false);
+            ib.setBorder(new LineBorder(new Color(80, 150, 120), 2));
+            ib.addActionListener(e -> selectCharacter(0, charIndex, ib));
+            characterButtons[0][c] = ib;
+            leftArea.add(ib);
         }
 
         // Right player area (top-right)
@@ -163,16 +190,21 @@ public class GameSetup {
         });
         rightArea.add(player2Field);
 
-        for (int r = 0; r < 2; r++) {
-            for (int c = 0; c < 3; c++) {
-                RoundedButton ib = new RoundedButton("");
-                ib.setBounds(8 + c * (icW + gap), 76 + r * (icH + gap), icW, icH);
-                ib.setText("+");
-                ib.setFont(new Font("Tahoma", Font.BOLD, 20));
-                ib.setForeground(new Color(200, 220, 200));
-                ib.setFocusPainted(false);
-                rightArea.add(ib);
+        for (int c = 0; c < NUM_CHARACTERS; c++) {
+            final int charIndex = c;
+            RoundedButton ib = new RoundedButton("");
+            int row = c / 3;
+            int col = c % 3;
+            ib.setBounds(8 + col * (icW + gap), 76 + row * (icH + gap), icW, icH);
+            if (characterImages[c] != null) {
+                Image scaledImage = characterImages[c].getScaledInstance(icW - 8, icH - 8, Image.SCALE_SMOOTH);
+                ib.setIcon(new ImageIcon(scaledImage));
             }
+            ib.setFocusPainted(false);
+            ib.setBorder(new LineBorder(new Color(100, 120, 180), 2));
+            ib.addActionListener(e -> selectCharacter(1, charIndex, ib));
+            characterButtons[1][c] = ib;
+            rightArea.add(ib);
         }
 
         // Difficulty area (middle, full-width)
@@ -283,10 +315,16 @@ public class GameSetup {
         startBtn.setBounds( card.getBounds().width - 180, 508, 140, 44);
         startBtn.setBackground(new Color(20, 120, 70));
         startBtn.setForeground(Color.WHITE);
-        startBtn.addActionListener(e -> controller.confirmStart(
-            player1Field.getText(),
-            player2Field.getText(),
-            selectedDifficulty()));
+        startBtn.addActionListener(e -> {
+            if (player1SelectedChar >= 0 && player2SelectedChar >= 0) {
+                controller.confirmStart(
+                    player1Field.getText(),
+                    player2Field.getText(),
+                    selectedDifficulty(),
+                    player1SelectedChar,
+                    player2SelectedChar);
+            }
+        });
         card.add(startBtn);
     }
 
@@ -295,6 +333,66 @@ public class GameSetup {
         if (easyBtn.isSelected()) return model.Board.Difficulty.EASY;
         if (hardBtn.isSelected()) return model.Board.Difficulty.HARD;
         return model.Board.Difficulty.MEDIUM;
+    }
+    
+    // Load character icons from resources
+    private void loadCharacterIcons() {
+        for (int i = 0; i < NUM_CHARACTERS; i++) {
+            try {
+                java.net.URL iconUrl = GameSetup.class.getResource(CHARACTER_ICONS[i]);
+                if (iconUrl != null) {
+                    characterImages[i] = ImageIO.read(iconUrl);
+                } else {
+                    String iconPath = ResourceLoader.getResourcePath(CHARACTER_ICONS[i]);
+                    if (iconPath != null && !iconPath.isEmpty()) {
+                        characterImages[i] = ImageIO.read(new File(iconPath));
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Could not load character icon: " + CHARACTER_ICONS[i]);
+            }
+        }
+    }
+    
+    // Handle character selection with visual feedback
+    private void selectCharacter(int player, int charIndex, JButton btn) {
+        if (player == 0) {
+            // Player 1 selection
+            if (charIndex == player2SelectedChar) {
+                JOptionPane.showMessageDialog(frame, 
+                    "Player 2 already selected this character!", 
+                    "Invalid Selection", 
+                    JOptionPane.ERROR_MESSAGE);
+                return; // Can't select same character as player 2
+            }
+            player1SelectedChar = charIndex;
+            // Update visual feedback
+            for (int i = 0; i < NUM_CHARACTERS; i++) {
+                if (i == charIndex) {
+                    characterButtons[0][i].setBorder(new LineBorder(new Color(0, 255, 100), 4));
+                } else {
+                    characterButtons[0][i].setBorder(new LineBorder(new Color(80, 150, 120), 2));
+                }
+            }
+        } else {
+            // Player 2 selection
+            if (charIndex == player1SelectedChar) {
+                JOptionPane.showMessageDialog(frame, 
+                    "Player 1 already selected this character!", 
+                    "Invalid Selection", 
+                    JOptionPane.ERROR_MESSAGE);
+                return; // Can't select same character as player 1
+            }
+            player2SelectedChar = charIndex;
+            // Update visual feedback
+            for (int i = 0; i < NUM_CHARACTERS; i++) {
+                if (i == charIndex) {
+                    characterButtons[1][i].setBorder(new LineBorder(new Color(0, 255, 100), 4));
+                } else {
+                    characterButtons[1][i].setBorder(new LineBorder(new Color(100, 120, 180), 2));
+                }
+            }
+        }
     }
 
     // shared style for text-only buttons at the bottom
