@@ -1,6 +1,6 @@
 package view;
 
-import controller.Main.GameSetupController;
+import controller.IGameSetupController;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GradientPaint;
@@ -24,12 +24,16 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.LineBorder;
+<<<<<<< Updated upstream
+=======
+import model.AudioManager;
+>>>>>>> Stashed changes
 import model.ResourceLoader;
 
 public class GameSetup {
 
     private JFrame frame;
-    private final GameSetupController controller;
+    private final IGameSetupController controller;
 
     private JTextField player1Field;
     private JTextField player2Field;
@@ -39,8 +43,13 @@ public class GameSetup {
     
     // Character selection
     private static final String[] CHARACTER_ICONS = {
+<<<<<<< Updated upstream
         "/resources/bomb.png", "/resources/gift.png", "/resources/net.png",
         "/resources/metaldetector.png", "/resources/question.png", "/resources/exit.png"
+=======
+        "/resources/cool.png", "/resources/smile.png", "/resources/artum.png",
+        "/resources/wizard.png", "/resources/superhero.png", "/resources/Dragonfly.png"
+>>>>>>> Stashed changes
     };
     private static final int NUM_CHARACTERS = 6;
     private BufferedImage[] characterImages = new BufferedImage[NUM_CHARACTERS];
@@ -49,7 +58,7 @@ public class GameSetup {
     private int player2SelectedChar = -1;
 
     // this screen only collects names + difficulty, then notifies controller
-    public GameSetup(GameSetupController controller) {
+    public GameSetup(IGameSetupController controller) {
         this.controller = controller;
         initialize();
     }
@@ -65,6 +74,14 @@ public class GameSetup {
         frame.setBounds(100, 100, W, H);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(null);
+<<<<<<< Updated upstream
+=======
+        // set app icon for taskbar and window
+        java.awt.image.BufferedImage icon = model.ResourceLoader.loadAppIcon();
+        if (icon != null) {
+            frame.setIconImage(icon);
+        }
+>>>>>>> Stashed changes
         
         // Load character icons
         loadCharacterIcons();
@@ -116,24 +133,8 @@ public class GameSetup {
         player1Field.setBounds(8, 26, 324, 36);
         player1Field.setOpaque(false);
         player1Field.setBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(0, 102, 51), null));
-        player1Field.setForeground(new Color(140, 160, 160));
+        player1Field.setForeground(new Color(220, 235, 230));
         player1Field.setCaretColor(new Color(220, 235, 230));
-        player1Field.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                if (player1Field.getText().equals(" Enter Player 1 username")) {
-                    player1Field.setText("");
-                    player1Field.setForeground(new Color(220, 235, 230));
-                }
-            }
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                if (player1Field.getText().equals("")) {
-                    player1Field.setText(" Enter Player 1 username");
-                    player1Field.setForeground(new Color(140, 160, 160));
-                }
-            }
-        });
         leftArea.add(player1Field);
 
         // 6 character icon buttons under player1 (2 rows of 3)
@@ -207,13 +208,6 @@ public class GameSetup {
             rightArea.add(ib);
         }
 
-        // Difficulty area (middle, full-width)
-        JLabel diffLbl = new JLabel("Select Difficulty");
-        diffLbl.setForeground(new Color(170, 220, 200));
-        diffLbl.setBounds(0, 320, card.getWidth(), 20);
-        diffLbl.setHorizontalAlignment(SwingConstants.CENTER);
-        card.add(diffLbl);
-
         // radio buttons inside colored menu panels with descriptions
         ButtonGroup grp = new ButtonGroup();
         easyBtn = new JRadioButton("Easy");
@@ -226,23 +220,23 @@ public class GameSetup {
         java.awt.Color orange = new java.awt.Color(200, 120, 0);
         java.awt.Color red = new java.awt.Color(160, 45, 45);
 
-        int w = 160, h = 80;
+        int w = 200, h = 140;
         JPanel easyContainer = new JPanel(null);
-        easyContainer.setBounds(120, 344, w, h);
+        easyContainer.setBounds(80, 320, w, h);
         easyContainer.setBackground(green);
         easyContainer.setOpaque(true);
         easyContainer.putClientProperty("baseColor", green);
         card.add(easyContainer);
 
         JPanel medContainer = new JPanel(null);
-        medContainer.setBounds(312, 344, w, h);
+        medContainer.setBounds(302, 320, w, h);
         medContainer.setBackground(orange);
         medContainer.setOpaque(true);
         medContainer.putClientProperty("baseColor", orange);
         card.add(medContainer);
 
         JPanel hardContainer = new JPanel(null);
-        hardContainer.setBounds(504, 344, w, h);
+        hardContainer.setBounds(524, 320, w, h);
         hardContainer.setBackground(red);
         hardContainer.setOpaque(true);
         hardContainer.putClientProperty("baseColor", red);
@@ -263,24 +257,48 @@ public class GameSetup {
         hardBtn.setFocusPainted(false);
 
         // description labels inside each container
-        JLabel easyInfo = new JLabel("9×9 board : 10 Bombs");
+        JLabel easyInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "9×9 board : 10 Bombs<br><br>" +
+            "10 lives.<br>" +
+            "6 Questions.<br>" +
+            "2 Surprises.<br>" +
+            "Q/S attempt Cost : 5 points." +
+            "</div></html>"
+        );
         easyInfo.setForeground(Color.WHITE);
         easyInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        easyInfo.setBounds(0, 44, w, 14);
+        easyInfo.setBounds(5, 36, w - 10, h - 44);
         easyContainer.add(easyBtn);
         easyContainer.add(easyInfo);
 
-        JLabel medInfo = new JLabel("13×13 board : 26 Bombs");
+        JLabel medInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "13×13 board : 26 Bombs<br><br>" +
+            "8 lives.<br>" +
+            "7 Questions.<br>" +
+            "3 Surprises.<br>" +
+            "Q/S attempt Cost : 8 points." +
+            "</div></html>"
+        );
         medInfo.setForeground(Color.WHITE);
         medInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        medInfo.setBounds(0, 44, w, 14);
+        medInfo.setBounds(5, 36, w - 10, h - 44);
         medContainer.add(mediumBtn);
         medContainer.add(medInfo);
 
-        JLabel hardInfo = new JLabel("16×16 board : 44 Bombs");
+        JLabel hardInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "16×16 board : 44 Bombs<br><br>" +
+            "6 lives.<br>" +
+            "11 Questions.<br>" +
+            "4 Surprises.<br>" +
+            "Q/S attempt Cost : 12 points." +
+            "</div></html>"
+        );
         hardInfo.setForeground(Color.WHITE);
         hardInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        hardInfo.setBounds(0, 44, w, 14);
+        hardInfo.setBounds(5, 36, w - 10, h - 44);
         hardContainer.add(hardBtn);
         hardContainer.add(hardInfo);
 
@@ -316,6 +334,7 @@ public class GameSetup {
         startBtn.setBackground(new Color(20, 120, 70));
         startBtn.setForeground(Color.WHITE);
         startBtn.addActionListener(e -> {
+<<<<<<< Updated upstream
             if (player1SelectedChar >= 0 && player2SelectedChar >= 0) {
                 controller.confirmStart(
                     player1Field.getText(),
@@ -324,6 +343,32 @@ public class GameSetup {
                     player1SelectedChar,
                     player2SelectedChar);
             }
+=======
+            if (player1SelectedChar < 0 || player2SelectedChar < 0) {
+                JOptionPane.showMessageDialog(
+                    card,
+                    "Please select icons for both players before starting.",
+                    "Missing Selection",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+            if (player1SelectedChar == player2SelectedChar) {
+                JOptionPane.showMessageDialog(
+                    card,
+                    "Both players must select different icons.",
+                    "Duplicate Selection",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+            controller.confirmStart(
+                player1Field.getText(),
+                player2Field.getText(),
+                selectedDifficulty(),
+                player1SelectedChar,
+                player2SelectedChar);
+>>>>>>> Stashed changes
         });
         card.add(startBtn);
     }
@@ -374,6 +419,11 @@ public class GameSetup {
                     characterButtons[0][i].setBorder(new LineBorder(new Color(80, 150, 120), 2));
                 }
             }
+<<<<<<< Updated upstream
+=======
+            // Play icon picked sound effect
+            AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+>>>>>>> Stashed changes
         } else {
             // Player 2 selection
             if (charIndex == player1SelectedChar) {
@@ -389,11 +439,22 @@ public class GameSetup {
                 if (i == charIndex) {
                     characterButtons[1][i].setBorder(new LineBorder(new Color(0, 255, 100), 4));
                 } else {
+<<<<<<< Updated upstream
                     characterButtons[1][i].setBorder(new LineBorder(new Color(100, 120, 180), 2));
                 }
             }
         }
     }
+=======
+                    characterButtons[1][i].setBorder(new LineBorder(new Color(80, 150, 120), 2));
+                }
+            }
+            // Play icon picked sound effect
+            AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+        }
+    }
+
+>>>>>>> Stashed changes
 
     // shared style for text-only buttons at the bottom
     @SuppressWarnings("unused")

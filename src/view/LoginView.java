@@ -19,6 +19,14 @@ public class LoginView {
         frame.setBounds(100, 100, 600, 500);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(null);
+<<<<<<< Updated upstream
+=======
+        // set app icon for taskbar and window
+        java.awt.image.BufferedImage icon = model.ResourceLoader.loadAppIcon();
+        if (icon != null) {
+            frame.setIconImage(icon);
+        }
+>>>>>>> Stashed changes
 
         // Background panel with gradient
         JPanel bg = new JPanel() {

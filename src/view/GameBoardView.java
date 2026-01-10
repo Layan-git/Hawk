@@ -1,6 +1,6 @@
 package view;
 
-import controller.Main.GameBoardController;
+import controller.IGameBoardController;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -12,9 +12,10 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
 import model.Cell;
+import model.GameObserver;
 import model.ResourceLoader;
 
-public class GameBoardView {
+public class GameBoardView implements GameObserver {
 
     // Timer fields
     private Timer gameTimer;
@@ -22,10 +23,18 @@ public class GameBoardView {
     private JLabel timerLabel;
 
     private JFrame frame;
+<<<<<<< Updated upstream
     private final GameBoardController controller;
 
     private JPanel boardPanel1;
     private JPanel boardPanel2;
+=======
+    private final IGameBoardController controller;
+
+    private JPanel boardPanel1;
+    private JPanel boardPanel2;
+    private JPanel infoPanelRef;  // Reference to info panel for border updates
+>>>>>>> Stashed changes
 
     private final JButton[][] cellButtons1;
     private final JButton[][] cellButtons2;
@@ -57,8 +66,13 @@ public class GameBoardView {
     
     // Character icons
     private static final String[] CHARACTER_ICON_PATHS = {
+<<<<<<< Updated upstream
         "/resources/bomb.png", "/resources/gift.png", "/resources/net.png",
         "/resources/metaldetector.png", "/resources/question.png", "/resources/exit.png"
+=======
+        "/resources/cool.png", "/resources/smile.png", "/resources/artum.png",
+        "/resources/wizard.png", "/resources/superhero.png", "/resources/Dragonfly.png"
+>>>>>>> Stashed changes
     };
     private BufferedImage player1CharIcon;
     private BufferedImage player2CharIcon;
@@ -69,10 +83,20 @@ public class GameBoardView {
     // Store board references for metal detector
     private model.Board board1;
     private model.Board board2;
+<<<<<<< Updated upstream
     
     // Health bar icon
     private BufferedImage healthIcon;
     private static final int ICON_SIZE = 24;
+=======
+    private model.Board.Difficulty gameDifficulty;
+    
+    // Health bar icon
+    private BufferedImage healthIcon;
+    private BufferedImage emptyHeartIcon;
+    private static final int ICON_SIZE = 24;
+    private int maxLives = 0;  // Track max lives to display empty hearts for lost lives
+>>>>>>> Stashed changes
     
     // Game cell icons
     private BufferedImage bombIcon;
@@ -107,13 +131,30 @@ public class GameBoardView {
     private static final Border INACTIVE_BORDER_P2 = new LineBorder(DIM_BORDER_P2_COL, 4, true);
     private static final Border ACTIVE_BORDER_P1_NEON = new LineBorder(NEON_GREEN, 5, true);
     private static final Border ACTIVE_BORDER_P2_NEON = new LineBorder(NEON_ORANGE, 5, true);
+<<<<<<< Updated upstream
+=======
+    
+    // Difficulty-based colors (matching GameSetup radio buttons)
+    private static final Color EASY_COLOR = new Color(20, 120, 70);
+    private static final Color MEDIUM_COLOR = new Color(200, 120, 0);
+    private static final Color HARD_COLOR = new Color(160, 45, 45);
+    
+    private Border difficultyInactiveP1;
+    private Border difficultyInactiveP2;
+    private Border difficultyActiveP1;
+    private Border difficultyActiveP2;
+>>>>>>> Stashed changes
 
     // ---------- ctor ----------
 
     /**
      * @wbp.parser.entryPoint
      */
+<<<<<<< Updated upstream
     public GameBoardView(GameBoardController controller, String player1Name, String player2Name, int boardSize, int player1CharIndex, int player2CharIndex) {
+=======
+    public GameBoardView(IGameBoardController controller, String player1Name, String player2Name, int boardSize, int player1CharIndex, int player2CharIndex) {
+>>>>>>> Stashed changes
         this.controller = controller;
         // if boardSize is 0 we default to 9x9
         this.boardSize = (boardSize == 0) ? 9 : boardSize;
@@ -139,6 +180,14 @@ public class GameBoardView {
         frame.setSize(1600, 900);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout(0, 0));
+<<<<<<< Updated upstream
+=======
+        // set app icon for taskbar and window
+        java.awt.image.BufferedImage icon = model.ResourceLoader.loadAppIcon();
+        if (icon != null) {
+            frame.setIconImage(icon);
+        }
+>>>>>>> Stashed changes
 
         // Load all icons before creating UI
         loadHealthIcon();
@@ -402,6 +451,11 @@ public class GameBoardView {
         panel.setLayout(new FlowLayout(FlowLayout.CENTER, 50, 20));
         panel.setOpaque(false);
         panel.setPreferredSize(new Dimension(1000, 90));
+<<<<<<< Updated upstream
+=======
+        panel.setBorder(new LineBorder(new Color(0, 200, 255), 3, true));
+        infoPanelRef = panel;  // Store reference for later border updates
+>>>>>>> Stashed changes
 
         JPanel scorePanel = createInfoItem("Score:", "0", new Color(0, 255, 128));
         scoreLabel = (JLabel) scorePanel.getComponent(1);
@@ -469,7 +523,11 @@ public class GameBoardView {
     // Load the health icon from resources
     private void loadHealthIcon() {
         try {
+<<<<<<< Updated upstream
             // Try classpath first (for JAR)
+=======
+            // Load filled heart icon
+>>>>>>> Stashed changes
             java.net.URL iconUrl = GameBoardView.class.getResource("/resources/poisoned_hardcore_full.png");
             if (iconUrl != null) {
                 healthIcon = ImageIO.read(iconUrl);
@@ -482,8 +540,27 @@ public class GameBoardView {
                     System.err.println("Health icon not found");
                 }
             }
+<<<<<<< Updated upstream
         } catch (IOException e) {
             System.err.println("Could not load health icon: " + e.getMessage());
+=======
+            
+            // Load empty heart icon
+            java.net.URL emptyIconUrl = GameBoardView.class.getResource("/resources/emptyheart.png");
+            if (emptyIconUrl != null) {
+                emptyHeartIcon = ImageIO.read(emptyIconUrl);
+            } else {
+                // Fallback to file system (for IDE)
+                String emptyIconPath = ResourceLoader.getResourcePath("/resources/emptyheart.png");
+                if (emptyIconPath != null && !emptyIconPath.isEmpty()) {
+                    emptyHeartIcon = ImageIO.read(new File(emptyIconPath));
+                } else {
+                    System.err.println("Empty heart icon not found");
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Could not load health icons: " + e.getMessage());
+>>>>>>> Stashed changes
         }
     }
 
@@ -559,6 +636,13 @@ public class GameBoardView {
             gameTimer.start();
         }
     }
+<<<<<<< Updated upstream
+=======
+    
+    public void hideTimer() {
+        timerLabel.setVisible(false);
+    }
+>>>>>>> Stashed changes
 
     public void stopTimer() {
         if (gameTimer != null) {
@@ -729,8 +813,12 @@ public class GameBoardView {
             default -> {
                 // currentTurn == 0 or invalid -> no active board (game ended)
                 player1Container.setBorder(INACTIVE_BORDER_P1);
+<<<<<<< Updated upstream
                 player2Container.setBorder(INACTIVE_BORDER_P2);
             }
+=======
+                player2Container.setBorder(INACTIVE_BORDER_P2);            }
+>>>>>>> Stashed changes
         }
     }
 
@@ -880,10 +968,17 @@ public class GameBoardView {
         // Clear existing icons
         livesPanel.removeAll();
         
+<<<<<<< Updated upstream
         // Add icon for each life remaining
         for (int i = 0; i < lives; i++) {
             if (healthIcon != null) {
                 // Create a scaled version of the icon
+=======
+        // Add icon for each life remaining (filled hearts)
+        for (int i = 0; i < lives; i++) {
+            if (healthIcon != null) {
+                // Create a scaled version of the filled heart icon
+>>>>>>> Stashed changes
                 Image scaledImage = healthIcon.getScaledInstance(ICON_SIZE, ICON_SIZE, Image.SCALE_SMOOTH);
                 JLabel iconLabel = new JLabel(new ImageIcon(scaledImage));
                 livesPanel.add(iconLabel);
@@ -896,9 +991,36 @@ public class GameBoardView {
             }
         }
         
+<<<<<<< Updated upstream
         livesPanel.revalidate();
         livesPanel.repaint();
     }
+=======
+        // Add icons for lost lives (empty hearts)
+        for (int i = lives; i < maxLives; i++) {
+            if (emptyHeartIcon != null) {
+                // Create a scaled version of the empty heart icon
+                Image scaledImage = emptyHeartIcon.getScaledInstance(ICON_SIZE, ICON_SIZE, Image.SCALE_SMOOTH);
+                JLabel iconLabel = new JLabel(new ImageIcon(scaledImage));
+                livesPanel.add(iconLabel);
+            } else {
+                // Fallback to text if icon can't be loaded
+                JLabel textLabel = new JLabel("🖤");  // Using empty heart emoji
+                textLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
+                textLabel.setForeground(new Color(100, 100, 100));
+                livesPanel.add(textLabel);
+            }
+        }
+        
+        livesPanel.revalidate();
+        livesPanel.repaint();
+    }
+    
+    // Set the maximum lives to display empty hearts for lost lives
+    public void setMaxLives(int maxLives) {
+        this.maxLives = maxLives;
+    }
+>>>>>>> Stashed changes
 
     public void updateStatus(String status) {
         statusLabel.setText(status);
@@ -1000,6 +1122,31 @@ public class GameBoardView {
     public void setBoards(model.Board b1, model.Board b2) {
         this.board1 = b1;
         this.board2 = b2;
+<<<<<<< Updated upstream
+=======
+        
+        // Update info panel border based on difficulty
+        if (b1 != null) {
+            model.Board.Difficulty difficulty = b1.getDifficulty();
+            Color borderColor;
+            switch (difficulty) {
+                case EASY:
+                    borderColor = EASY_COLOR;
+                    break;
+                case MEDIUM:
+                    borderColor = MEDIUM_COLOR;
+                    break;
+                case HARD:
+                    borderColor = HARD_COLOR;
+                    break;
+                default:
+                    borderColor = new Color(0, 200, 255);  // Default cyan
+            }
+            if (infoPanelRef != null) {
+                infoPanelRef.setBorder(new LineBorder(borderColor, 3, true));
+            }
+        }
+>>>>>>> Stashed changes
     }
     
     private boolean metalDetectorActiveFlag = false;
@@ -1035,10 +1182,56 @@ public class GameBoardView {
         return metalDetectorButton;
     }
     // Mock main (optional) – lets you open the board view without the rest of the game
+<<<<<<< Updated upstream
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
             try {
                 GameBoardController mock = new GameBoardController() {
+=======
+    /**
+     * Get the board panel for a specific player
+     * @param playerNum 1 for player 1, 2 for player 2
+     * @return The board panel component
+     */
+    public JPanel getBoardPanel(int playerNum) {
+        return (playerNum == 1) ? boardPanel1 : boardPanel2;
+    }
+    
+    /**
+     * Get the board size (number of cells per row/col)
+     */
+    public int getBoardSize() {
+        return boardSize;
+    }
+
+    // -------------------------------
+    // GameObserver implementation
+    // -------------------------------
+    
+    /**
+     * Called when the game state is updated (Observer pattern).
+     * Updates the score and lives display in the UI.
+     * 
+     * @param score the current score
+     * @param lives the current number of lives
+     */
+    @Override
+    public void onGameUpdated(int score, int lives) {
+        if (scoreLabel != null) {
+            scoreLabel.setText(String.valueOf(score));
+        }
+        // Lives are displayed using updateLives method with icons
+        // We can update the lives panel here if needed
+        if (livesPanel != null) {
+            updateLives(lives);
+        }
+    }
+
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                IGameBoardController mock = new IGameBoardController() {
+>>>>>>> Stashed changes
                     @Override
                     public void onCellClick(int p, int r, int c) {}
                     @Override

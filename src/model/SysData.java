@@ -179,7 +179,9 @@ public class SysData {
                         escape(q.getOptD()),
                         q.getCorrectAnswer());
             }
+            pw.flush(); // Ensure data is written to disk
         } catch (IOException e) {
+            System.err.println("ERROR saving questions to: " + CSV_PATH);
             e.printStackTrace();
         }
     }
@@ -191,6 +193,15 @@ public class SysData {
     }
 
     // ---------------- Public accessors ----------------
+<<<<<<< Updated upstream
+=======
+
+    // Reload all questions from CSV (useful when questions have been updated externally)
+    public static void reloadQuestionsFromCSV() {
+        questionList.clear();
+        loadQuestions();
+    }
+>>>>>>> Stashed changes
 
     public static List<Questions> getAllQuestions() {
         return questionList;
@@ -208,7 +219,7 @@ public class SysData {
 
     // ---------------- Game-time question usage ----------------
 
-    // Call at start of each new game
+    // Call at start of each new game - clear asked questions for fresh game
     public static void resetAskedQuestions() {
         for (int d = 1; d <= 4; d++) {
             askedQuestionIds.get(d).clear();
@@ -264,6 +275,7 @@ public class SysData {
     
     // ----------------  History Management ----------------
     
+<<<<<<< Updated upstream
     // Add a game history record
     public static void addHistory(History history) {
         if (history != null) {
@@ -272,7 +284,27 @@ public class SysData {
     }
     
     // Get all game histories
+=======
+    // Add a game history record and save to CSV
+    public static void addHistory(History history) {
+        if (history != null) {
+            historyList.add(history);
+            HistoryManager.writeHistory(history);
+        }
+    }
+    
+    // Reload all histories from CSV (useful when history has been updated externally)
+    public static void reloadHistoriesFromCSV() {
+        historyList.clear();
+        historyList.addAll(HistoryManager.readAllHistories());
+    }
+    
+    // Get all game histories (loads from CSV if list is empty, otherwise returns cached list)
+>>>>>>> Stashed changes
     public static List<History> getAllHistories() {
+        if (historyList.isEmpty()) {
+            historyList.addAll(HistoryManager.readAllHistories());
+        }
         return new ArrayList<>(historyList);
     }
     
@@ -288,4 +320,16 @@ public class SysData {
         }
         return userHistories;
     }
+<<<<<<< Updated upstream
+=======
+    
+    // ----------------  Authentication ----------------
+    
+    // Verify login credentials
+    public static boolean verifyLogin(String username, String password) {
+        // Simple authentication: username "admin" with password "admin"
+        // Modify this logic based on your actual authentication requirements
+        return "admin".equalsIgnoreCase(username) && "admin".equals(password);
+    }
+>>>>>>> Stashed changes
 }

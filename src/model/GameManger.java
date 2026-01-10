@@ -51,6 +51,15 @@ public class GameManger {
     private int currentQuestionDifficulty = 1; // tracks current question difficulty (1=Easy, 2=Medium, 3=Hard, 4=Advanced)
     private final Random random = new Random();
     
+<<<<<<< Updated upstream
+=======
+    // observers listen for score/lives changes - updates ui in real time
+    private final List<GameObserver> observers = new ArrayList<>();
+    
+    // Strategy pattern - scoring strategy based on difficulty
+    private ScoringStrategy scoringStrategy;
+    
+>>>>>>> Stashed changes
     // Momentum Multiplier system
     private int consecutiveSafeCells = 0; // tracks streak of safe clicks
     
@@ -65,6 +74,15 @@ public class GameManger {
     public void GameManager(Difficulty difficulty) {
         this.difficulty = difficulty;             // keep current difficulty so we know rules
         configureLivesByDifficulty(difficulty);   // set starting hearts based on difficulty
+        
+        // Initialize scoring strategy based on difficulty
+        switch (difficulty) {
+            case EASY -> scoringStrategy = new EasyScoringStrategy();
+            case MEDIUM -> scoringStrategy = new MediumScoringStrategy();
+            case HARD -> scoringStrategy = new HardScoringStrategy();
+            default -> scoringStrategy = new EasyScoringStrategy(); // default to easy
+        }
+        
         startNewGame();                           // create a fresh board + reset score/lives
     }
 
@@ -83,11 +101,43 @@ public class GameManger {
         this.score = 0;
         this.lives = maxLives;
         this.status = GameStatus.RUNNING;
+        notifyObservers(); // notify observers about initial state
     }
 
     // Set the board reference (called from Main.java after creating the game manager)
     public void setBoard(Board board) {
         this.board = board;
+    }
+    
+    // -------------------------------
+    // Observer pattern methods
+    // -------------------------------
+    
+    /**
+     * Adds an observer to be notified of game state changes.
+     * 
+     * @param observer the observer to add
+     */
+    public void addObserver(GameObserver observer) {
+        observers.add(observer);
+    }
+    
+    /**
+     * Removes an observer from the notification list.
+     * 
+     * @param observer the observer to remove
+     */
+    public void removeObserver(GameObserver observer) {
+        observers.remove(observer);
+    }
+    
+    /**
+     * Notifies all registered observers of game state changes.
+     */
+    private void notifyObservers() {
+        for (GameObserver observer : observers) {
+            observer.onGameUpdated(score, lives);
+        }
     }
 
     // when a mine is hit we only touch lives here (no score logic)
@@ -121,11 +171,7 @@ public class GameManger {
 
     // how many points it costs to activate a question/surprise cell
     public int getBaseOpenCost() {
-        return switch (difficulty) {
-            case EASY -> 5;   // easy: 5 points cost
-            case MEDIUM -> 8; // medium: 8 points cost
-            case HARD -> 12;  // hard: 12 points cost
-        };
+        return scoringStrategy.getBaseOpenCost();
     }
 
     // actually pay the activation cost
@@ -431,28 +477,21 @@ public class GameManger {
     private void gainLife() {
         if (lives < maxLives) {
             lives++;
+            notifyObservers();  // notify observers of life change
         } else {
             // Extra life converted to points: same value as the open cost
-            addPoints(getBaseOpenCost());
+            addPoints(getBaseOpenCost()); // this will call notifyObservers()
         }
     }
 
     // how many points we get on a good effect (before life change)
     public int getGoodEffectPoints() {
-        return switch (difficulty) {
-            case EASY -> 8;   // good surprise easy: +8 pts
-            case MEDIUM -> 12;// medium: +12 pts
-            case HARD -> 16;  // hard: +16 pts
-        };
+        return scoringStrategy.getGoodEffectPoints();
     }
 
     // how many points we lose on a bad effect
     public int getBadEffectPoints() {
-        return switch (difficulty) {
-            case EASY -> -8;   // easy: -8 pts
-            case MEDIUM -> -12;// medium: -12 pts
-            case HARD -> -16;  // hard: -16 pts
-        };
+        return scoringStrategy.getBadEffectPoints();
     }
 
     // apply “good effect”: add points and give life (or points if already full)
@@ -469,7 +508,7 @@ public class GameManger {
 
     // +1 point for each safe revealed cell (normal click on empty/number)
     public void awardSafeCellPoint() {
-        addPoints(1);
+        addPoints(scoringStrategy.pointsForSafeCell());
     }
 
     // -------------------------------
@@ -517,11 +556,13 @@ public class GameManger {
 
     public void addPoints(int points) {
         this.score += points;   // we allow negative values here too
+        notifyObservers();      // notify observers of score change
     }
 
     private void loseLife() {
         if (lives > 0) {
             lives--;            // just drop one heart, caller checks for game over
+            notifyObservers();  // notify observers of life change
         }
     }
 
@@ -529,9 +570,10 @@ public class GameManger {
     public void gainLifeOrPoints() {
         if (lives < maxLives) {
             lives++;  // give a life until we reach maxLives
+            notifyObservers();  // notify observers of life change
         } else {
             // extra life converted to points: same value as the open cost
-            addPoints(getBaseOpenCost());   // EASY: 5, MEDIUM: 8, HARD: 12
+            addPoints(getBaseOpenCost());   // EASY: 5, MEDIUM: 8, HARD: 12 (will call notifyObservers())
         }
     }
 
@@ -559,6 +601,10 @@ public class GameManger {
     public int getLives() { return lives; }
     public int getMaxLives() { return maxLives; }
     public GameStatus getStatus() { return status; }
+<<<<<<< Updated upstream
+=======
+    public Difficulty getDifficulty() { return difficulty; }
+>>>>>>> Stashed changes
     
     // -------------------------------
     // Momentum Multiplier Methods
@@ -603,8 +649,16 @@ public class GameManger {
         } else {
             return "No bonus (" + (5 - consecutiveSafeCells) + " more for Tier 1)";
         }
+<<<<<<< Updated upstream
     }
     
+=======
+    }    
+    // Award +1 point for flagging a mine (NOT affected by momentum)
+    public void awardFlagBonus() {
+        addPoints(1);
+    }    
+>>>>>>> Stashed changes
     // -------------------------------
     // Shop System Methods
     // -------------------------------
