@@ -20,3 +20,4 @@ ID,Question,Difficulty,A,B,C,D,Correct Answer
 19,You trace every SRS requirement to corresponding tests. This process is called…,4,Verification,Validation,Traceability,Integration,C
 20,You must deliver a system with zero downtime deployment. This constraint is mainly related to…,4,Maintainability,Availability,Security,Portability,B
 21,how are you ?,4,fine,okay,sad,happy,D
+22,what is today?,3,mon,sun,sat,tue,A

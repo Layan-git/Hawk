@@ -1,29 +1,21 @@
 package view;
 
-import controller.Main.MainMenuController;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
+import controller.IMainMenuController;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+import javax.swing.*;
+import model.AudioManager;
 import model.ResourceLoader;
 
 public class Settings {
 
     private JFrame frame;
-    private final MainMenuController controller;
+    private final IMainMenuController controller;
 
-    public Settings(MainMenuController controller) {
+    public Settings(IMainMenuController controller) {
         this.controller = controller;
         initialize();
     }
@@ -89,29 +81,49 @@ public class Settings {
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
         };
-        settingsPanel.setBounds((W - 400) / 2, (H - 300) / 2, 400, 300);
+        settingsPanel.setBounds((W - 500) / 2, (H - 350) / 2, 500, 350);
         bg.add(settingsPanel);
         settingsPanel.setLayout(null);
 
         // Title
         JLabel title = new JLabel("SETTINGS");
         title.setHorizontalAlignment(SwingConstants.CENTER);
-        title.setBounds(0, 20, 400, 40);
+        title.setBounds(0, 20, 500, 40);
         settingsPanel.add(title);
         title.setForeground(new Color(0, 200, 170));
         title.setFont(new Font("Tahoma", Font.BOLD, 28));
 
-        // Settings label placeholder
-        JLabel settingsLabel = new JLabel("Settings Coming Soon...");
-        settingsLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        settingsLabel.setBounds(0, 100, 400, 30);
-        settingsPanel.add(settingsLabel);
-        settingsLabel.setForeground(new Color(170, 220, 200));
-        settingsLabel.setFont(new Font("Tahoma", Font.PLAIN, 14));
+        // Music button
+        JButton musicBtn = new JButton("MUSIC");
+        musicBtn.setBounds(50, 80, 180, 50);
+        settingsPanel.add(musicBtn);
+        updateMusicButtonState(musicBtn);
+        musicBtn.setFont(new Font("Tahoma", Font.BOLD, 14));
+        musicBtn.setFocusPainted(false);
+        musicBtn.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 100), 2));
+        musicBtn.addActionListener(e -> {
+            boolean currentlyMuted = AudioManager.getInstance().isMusicMuted();
+            AudioManager.getInstance().setMusicMuted(!currentlyMuted);
+            updateMusicButtonState(musicBtn);
+        });
+
+        // Sound Effects button
+        JButton soundBtn = new JButton("SOUND");
+        soundBtn.setBounds(270, 80, 180, 50);
+        settingsPanel.add(soundBtn);
+        updateSoundButtonState(soundBtn);
+        soundBtn.setFont(new Font("Tahoma", Font.BOLD, 14));
+        soundBtn.setFocusPainted(false);
+        soundBtn.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 100), 2));
+        soundBtn.addActionListener(e -> {
+            boolean currentlyMuted = AudioManager.getInstance().isSoundEffectsMuted();
+            AudioManager.getInstance().setSoundEffectsMuted(!currentlyMuted);
+            updateSoundButtonState(soundBtn);
+        });
 
         // Back button
         JButton backBtn = new JButton("Back");
-        backBtn.setBounds(150, 220, 100, 40);
+        backBtn.setBounds(150, 250, 200, 50);
         settingsPanel.add(backBtn);
         styleButton(backBtn);
         backBtn.addActionListener(e -> {
@@ -158,4 +170,39 @@ public class Settings {
             }
         });
     }
+    
+    /**
+     * Update music button color and text based on mute state
+     */
+    private void updateMusicButtonState(JButton btn) {
+        if (AudioManager.getInstance().isMusicMuted()) {
+            // Music is MUTED (OFF)
+            btn.setBackground(new Color(200, 50, 50));
+            btn.setForeground(Color.WHITE);
+        } else {
+            // Music is ON
+            btn.setBackground(new Color(50, 150, 100));
+            btn.setForeground(Color.WHITE);
+        }
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+    }
+    
+    /**
+     * Update sound button color and text based on mute state
+     */
+    private void updateSoundButtonState(JButton btn) {
+        if (AudioManager.getInstance().isSoundEffectsMuted()) {
+            // Sound is MUTED (OFF)
+            btn.setBackground(new Color(200, 50, 50));
+            btn.setForeground(Color.WHITE);
+        } else {
+            // Sound is ON
+            btn.setBackground(new Color(50, 150, 100));
+            btn.setForeground(Color.WHITE);
+        }
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+    }
 }
+

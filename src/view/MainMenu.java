@@ -1,8 +1,7 @@
 package view;
 
-import controller.Main.MainMenuController;
+import controller.IMainMenuController;
 import java.awt.Color;
-import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
@@ -23,17 +22,12 @@ import model.ResourceLoader;
 public class MainMenu {
 
     private JFrame frame;
-    private final MainMenuController controller;
-
-    public static void main(String[] args) {
-        // Launches the main menu (entry point for the whole game UI)
-        EventQueue.invokeLater(controller.Main::new);
-    }
+    private final IMainMenuController controller;
 
     /**
      * @wbp.parser.entryPoint
      */
-    public MainMenu(MainMenuController controller) {
+    public MainMenu(IMainMenuController controller) {
         this.controller = controller;
         initialize();
     }
@@ -70,7 +64,7 @@ public class MainMenu {
                     if (bgPath != null) {
                         try {
                             img = ImageIO.read(new File(bgPath));
-                        } catch (Exception e) {
+                        } catch (java.io.IOException e) {
                             System.err.println("Could not load background image: " + e.getMessage());
                         }
                     }
@@ -121,7 +115,7 @@ public class MainMenu {
                     iconLabel.setIcon(new ImageIcon(ImageIO.read(new File(iconPath))));
                 }
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             System.err.println("Could not load nerd icon: " + e.getMessage());
         }
         iconLabel.setBounds((280 - 64) / 2, 30, 64, 64);
@@ -153,13 +147,18 @@ public class MainMenu {
         sidePanel.add(historyBtn);
         styleMenuButton(historyBtn);
 
+        JButton leaderboardBtn = new JButton("LeaderBoard");
+        leaderboardBtn.setBounds(20, 400, 240, 40);
+        sidePanel.add(leaderboardBtn);
+        styleMenuButton(leaderboardBtn);
+
         JButton manageBtn = new JButton("Manage Questions");
-        manageBtn.setBounds(20, 400, 240, 40);
+        manageBtn.setBounds(20, 450, 240, 40);
         sidePanel.add(manageBtn);
         styleMenuButton(manageBtn);
         
         JButton howBtn = new JButton("How to Play");
-        howBtn.setBounds(20, 450, 240, 40);
+        howBtn.setBounds(20, 500, 240, 40);
         sidePanel.add(howBtn);
         styleMenuButton(howBtn);
 
@@ -210,6 +209,7 @@ public class MainMenu {
         howBtn.addActionListener(e -> controller.openHowToPlay());
         manageBtn.addActionListener(e -> controller.openManageQuestions());
         historyBtn.addActionListener(e -> controller.openHistory());
+        leaderboardBtn.addActionListener(e -> controller.openLeaderBoard());
         startBtn.addActionListener(e -> controller.startGame());
         settingsBtn.addActionListener(e -> controller.openSettings());
 
@@ -224,7 +224,7 @@ public class MainMenu {
                     frame.setIconImage(ImageIO.read(new File(iconPath)));
                 }
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             System.err.println("Could not set window icon: " + e.getMessage());
         }   
     }
