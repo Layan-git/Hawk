@@ -34,8 +34,12 @@ public class HistoryManager {
         try {
             String csvPath = getHistoryCSVPath();
             Path filePath = Paths.get(csvPath);
+            
+            // Ensure parent directories exist
+            Files.createDirectories(filePath.getParent());
+            
+            // If file doesn't exist, create it with header
             if (!Files.exists(filePath)) {
-                Files.createDirectories(filePath.getParent());
                 Files.write(filePath, CSV_HEADER.getBytes());
             }
         } catch (IOException e) {
@@ -50,33 +54,60 @@ public class HistoryManager {
         if (history == null) return;
         
         try {
-            String csvLine = convertHistoryToCSV(history);
             String csvPath = getHistoryCSVPath();
+            Path filePath = Paths.get(csvPath);
+            
+            System.out.println("Writing history to: " + filePath.toAbsolutePath());
+            
+            // Ensure parent directory exists
+            Files.createDirectories(filePath.getParent());
+            
+            // Ensure file exists before appending
+            if (!Files.exists(filePath)) {
+                System.out.println("History file does not exist, creating with header...");
+                Files.write(filePath, CSV_HEADER.getBytes());
+            }
+            
+            String csvLine = convertHistoryToCSV(history);
             Files.write(
-                    Paths.get(csvPath),
+                    filePath,
                     (csvLine + "\n").getBytes(),
                     StandardOpenOption.APPEND
             );
+            System.out.println("History saved successfully!");
         } catch (IOException e) {
             System.err.println("Error writing history to CSV: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
     /**
-     * Read all game histories from the CSV file
+     * Read all game histories from the CSV file.
+     * First tries to load from bundled History.csv in JAR, then falls back to user directory.
      */
     public static List<History> readAllHistories() {
         List<History> histories = new ArrayList<>();
         
+        // First try to load from classpath (bundled History.csv in JAR)
+        InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/History.csv");
+        if (csvStream != null) {
+            loadHistoriesFromStream(csvStream, histories);
+        }
+        
+        // Then load from user directory (writable location)
         try {
             String csvPath = getHistoryCSVPath();
-            List<String> lines = Files.readAllLines(Paths.get(csvPath));
+            Path filePath = Paths.get(csvPath);
             
-            // Skip header row
-            for (int i = 1; i < lines.size(); i++) {
-                History history = parseCSVLine(lines.get(i));
-                if (history != null) {
-                    histories.add(history);
+            if (Files.exists(filePath)) {
+                List<String> lines = Files.readAllLines(filePath);
+                
+                // Skip header row
+                for (int i = 1; i < lines.size(); i++) {
+                    History history = parseCSVLine(lines.get(i));
+                    if (history != null && !histories.contains(history)) {
+                        histories.add(history);
+                    }
                 }
             }
         } catch (IOException e) {
@@ -84,6 +115,29 @@ public class HistoryManager {
         }
         
         return histories;
+    }
+    
+    /**
+     * Load histories from an InputStream (JAR classpath resources)
+     */
+    private static void loadHistoriesFromStream(InputStream is, List<History> histories) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+            String line;
+            
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("DateTime,")) {
+                    continue; // Skip header
+                }
+                
+                History history = parseCSVLine(line);
+                if (history != null) {
+                    histories.add(history);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading histories from stream: " + e.getMessage());
+        }
     }
     
     /**

@@ -12,11 +12,6 @@ public class SysData {
 
     private static String CSV_PATH = null;
     
-    static {
-        // Initialize CSV_PATH to work in both IDE and JAR
-        CSV_PATH = ResourceLoader.getCSVPath();
-    }
-
     // All questions in memory
     private static final List<Questions> questionList = new ArrayList<>();
     
@@ -25,27 +20,70 @@ public class SysData {
 
     // For game runtime: track asked question IDs per difficulty (1..4)
     private static final Map<Integer, Set<Integer>> askedQuestionIds = new HashMap<>();
-
+    
     static {
+        // Initialize CSV_PATH to work in both IDE and JAR
+        CSV_PATH = ResourceLoader.getCSVPath();
+        initializeQuestions();
+    }
+
+    /**
+     * Initialize questions loading with priority:
+     * 1. User home directory (edited questions)
+     * 2. JAR classpath (bundled questions)
+     * 3. IDE development path (fallback)
+     */
+    private static void initializeQuestions() {
         // init asked sets
         for (int d = 1; d <= 4; d++) {
             askedQuestionIds.put(d, new HashSet<>());
         }
-        // Load from classpath if available
-        InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/Questions.csv");
-        if (csvStream != null) {
-            loadQuestionsFromStream(csvStream);
-        } else {
-            loadQuestions();
+        
+        boolean loaded = false;
+        
+        // First try user home directory
+        try {
+            String userHome = System.getProperty("user.home");
+            String userQuestionsPath = new File(userHome, ".hawk" + File.separator + "Questions.csv").getAbsolutePath();
+            File userFile = new File(userQuestionsPath);
+            
+            if (userFile.exists()) {
+                System.out.println("Loading questions from user directory: " + userQuestionsPath);
+                loadQuestions(userQuestionsPath);
+                loaded = true;
+            }
+        } catch (Exception e) {
+            System.err.println("Error checking user directory: " + e.getMessage());
+        }
+        
+        // If not loaded from user directory, try classpath (JAR)
+        if (!loaded) {
+            InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/Questions.csv");
+            if (csvStream != null) {
+                System.out.println("Loading questions from JAR classpath");
+                loadQuestionsFromStream(csvStream);
+                loaded = true;
+            }
+        }
+        
+        // Fallback to file-based loading (IDE)
+        if (!loaded) {
+            System.out.println("Loading questions from CSV_PATH: " + CSV_PATH);
+            loadQuestions(CSV_PATH);
         }
     }
 
     // ---------------- Loading & Saving ----------------
 
     public static void loadQuestions() {
+        loadQuestions(CSV_PATH);
+    }
+
+    // Load questions from a specific path
+    public static void loadQuestions(String filePath) {
         questionList.clear();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(CSV_PATH))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
 
             while ((line = br.readLine()) != null) {
@@ -85,6 +123,7 @@ public class SysData {
                 }
             }
         } catch (IOException e) {
+            System.err.println("Error loading questions from " + filePath + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -165,23 +204,54 @@ public class SysData {
 
     // Write the current in-memory list back to CSV
     public static void saveQuestions() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(CSV_PATH))) {
-            // header
-            pw.println("ID,Question,Difficulty,A,B,C,D,Correct Answer");
-            for (Questions q : questionList) {
-                pw.printf("%d,%s,%d,%s,%s,%s,%s,%s%n",
-                        q.getId(),
-                        escape(q.getText()),
-                        q.getDifficulty(),
-                        escape(q.getOptA()),
-                        escape(q.getOptB()),
-                        escape(q.getOptC()),
-                        escape(q.getOptD()),
-                        q.getCorrectAnswer());
+        try {
+            // Determine save path:
+            // - In IDE: save to src/csvFiles/Questions.csv
+            // - In JAR: save to ~/.hawk/Questions.csv
+            String savePath = CSV_PATH;
+            
+            File csvFile = new File(CSV_PATH);
+            // Only redirect to user home if CSV_PATH doesn't exist AND we're not in IDE
+            if (!csvFile.exists()) {
+                String userHome = System.getProperty("user.home");
+                String questionsDir = new File(userHome, ".hawk").getAbsolutePath();
+                savePath = new File(questionsDir, "Questions.csv").getAbsolutePath();
+                
+                // Ensure directory exists
+                File parentDir = new File(savePath).getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    parentDir.mkdirs();
+                }
             }
-            pw.flush(); // Ensure data is written to disk
+            
+            System.out.println("=== SAVING QUESTIONS ===");
+            System.out.println("CSV_PATH: " + CSV_PATH);
+            System.out.println("CSV_PATH exists: " + csvFile.exists());
+            System.out.println("Save path: " + savePath);
+            System.out.println("Save path exists before: " + new File(savePath).exists());
+            System.out.println("Number of questions to save: " + questionList.size());
+            
+            try (PrintWriter pw = new PrintWriter(new FileWriter(savePath))) {
+                // header
+                pw.println("ID,Question,Difficulty,A,B,C,D,Correct Answer");
+                for (Questions q : questionList) {
+                    pw.printf("%d,%s,%d,%s,%s,%s,%s,%s%n",
+                            q.getId(),
+                            escape(q.getText()),
+                            q.getDifficulty(),
+                            escape(q.getOptA()),
+                            escape(q.getOptB()),
+                            escape(q.getOptC()),
+                            escape(q.getOptD()),
+                            q.getCorrectAnswer());
+                }
+                pw.flush(); // Ensure data is written to disk
+                System.out.println("Questions saved successfully to: " + savePath);
+                System.out.println("Save path exists after: " + new File(savePath).exists());
+                System.out.println("========================");
+            }
         } catch (IOException e) {
-            System.err.println("ERROR saving questions to: " + CSV_PATH);
+            System.err.println("ERROR saving questions: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -196,7 +266,31 @@ public class SysData {
 
     // Reload all questions from CSV (useful when questions have been updated externally)
     public static void reloadQuestionsFromCSV() {
-        questionList.clear();
+        // First priority: Load from user home directory (where edits are saved)
+        try {
+            String userHome = System.getProperty("user.home");
+            String userQuestionsPath = new File(userHome, ".hawk" + File.separator + "Questions.csv").getAbsolutePath();
+            File userFile = new File(userQuestionsPath);
+            
+            if (userFile.exists()) {
+                System.out.println("Loading questions from user directory: " + userQuestionsPath);
+                loadQuestions(userQuestionsPath);
+                return;
+            }
+        } catch (Exception e) {
+            System.err.println("Error checking user directory for questions: " + e.getMessage());
+        }
+        
+        // Second priority: Load from classpath (bundled in JAR)
+        InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/Questions.csv");
+        if (csvStream != null) {
+            System.out.println("Loading questions from JAR classpath");
+            loadQuestionsFromStream(csvStream);
+            return;
+        }
+        
+        // Fallback: Load from CSV_PATH (IDE development)
+        System.out.println("Loading questions from CSV_PATH: " + CSV_PATH);
         loadQuestions();
     }
 
@@ -275,6 +369,7 @@ public class SysData {
     // Add a game history record and save to CSV
     public static void addHistory(History history) {
         if (history != null) {
+            System.out.println("Adding history for game: " + history.getDateTime());
             historyList.add(history);
             HistoryManager.writeHistory(history);
         }

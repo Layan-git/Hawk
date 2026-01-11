@@ -118,8 +118,8 @@ public class ResourceLoader {
     }
 
     /**
-     * Get the absolute path to the CSV file.
-     * Handles both development and JAR deployment scenarios.
+     * Get the absolute path to the CSV file (Questions.csv).
+     * For development, loads from src/csvFiles. For JAR, resources are loaded via InputStream.
      * 
      * @return Path to Questions.csv file
      */
@@ -150,6 +150,7 @@ public class ResourceLoader {
 
     /**
      * Get the absolute path to the History CSV file.
+     * In development, uses src/csvFiles. When running as JAR, stores in user's app data directory.
      * 
      * @return Path to History.csv file
      */
@@ -168,14 +169,10 @@ public class ResourceLoader {
             return altFile.getAbsolutePath();
         }
         
-        // Try resource path
-        String resourcePath = getResourcePath("/csvFiles/History.csv");
-        if (resourcePath != null) {
-            return resourcePath;
-        }
-        
-        // Fallback: use src/csvFiles/History.csv as default
-        return new File("src/csvFiles/History.csv").getAbsolutePath();
+        // For JAR deployment: use user home directory
+        String userHome = System.getProperty("user.home");
+        String hawkDir = new File(userHome, ".hawk").getAbsolutePath();
+        return new File(hawkDir, "History.csv").getAbsolutePath();
     }
 
     /**
