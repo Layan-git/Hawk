@@ -4,6 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 
+
 public class GameSummaryView {
 
     public interface SummaryController {
@@ -33,6 +34,11 @@ public class GameSummaryView {
         frame.setSize(600, 500);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // set app icon for taskbar and window
+        java.awt.image.BufferedImage icon = model.ResourceLoader.loadAppIcon();
+        if (icon != null) {
+            frame.setIconImage(icon);
+        }
 
         JPanel main = new JPanel(new BorderLayout(0, 15));
         main.setBackground(new Color(15, 25, 30));

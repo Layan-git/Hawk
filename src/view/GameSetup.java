@@ -1,15 +1,23 @@
 package view;
 
-import controller.Main.GameSetupController;
+import controller.IGameSetupController;
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -17,20 +25,34 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
+import model.AudioManager;
+import model.ResourceLoader;
 
 public class GameSetup {
 
     private JFrame frame;
-    private final GameSetupController controller;
+    private final IGameSetupController controller;
 
     private JTextField player1Field;
     private JTextField player2Field;
     private JRadioButton easyBtn;
     private JRadioButton mediumBtn;
     private JRadioButton hardBtn;
+    
+    // Character selection
+    private static final String[] CHARACTER_ICONS = {
+        "/resources/cool.png", "/resources/smile.png", "/resources/artum.png",
+        "/resources/wizard.png", "/resources/superhero.png", "/resources/Dragonfly.png"
+    };
+    private static final int NUM_CHARACTERS = 6;
+    private BufferedImage[] characterImages = new BufferedImage[NUM_CHARACTERS];
+    private JButton[][] characterButtons = new JButton[2][NUM_CHARACTERS];
+    private int player1SelectedChar = -1;
+    private int player2SelectedChar = -1;
 
     // this screen only collects names + difficulty, then notifies controller
-    public GameSetup(GameSetupController controller) {
+    public GameSetup(IGameSetupController controller) {
         this.controller = controller;
         initialize();
     }
@@ -46,6 +68,14 @@ public class GameSetup {
         frame.setBounds(100, 100, W, H);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(null);
+        // set app icon for taskbar and window
+        java.awt.image.BufferedImage icon = model.ResourceLoader.loadAppIcon();
+        if (icon != null) {
+            frame.setIconImage(icon);
+        }
+        
+        // Load character icons
+        loadCharacterIcons();
 
         // background panel with gradient (visual only)
         JPanel bg = new JPanel() {
@@ -64,7 +94,7 @@ public class GameSetup {
         bg.setLayout(null);
         frame.setContentPane(bg);
 
-        // container for controls — make it transparent so everything sits on the bg
+        // container for controls â€” make it transparent so everything sits on the bg
         JPanel card = new JPanel();
         card.setOpaque(false);
         card.setBorder(null);
@@ -87,6 +117,7 @@ public class GameSetup {
 
         JLabel p1 = new JLabel("Player 1");
         p1.setForeground(new Color(170, 220, 200));
+        p1.setFont(new Font("Tahoma", Font.BOLD, 14));
         p1.setBounds(8, 0, 200, 20);
         leftArea.add(p1);
 
@@ -94,38 +125,28 @@ public class GameSetup {
         player1Field.setBounds(8, 26, 324, 36);
         player1Field.setOpaque(false);
         player1Field.setBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(0, 102, 51), null));
-        player1Field.setForeground(new Color(140, 160, 160));
+        player1Field.setForeground(new Color(220, 235, 230));
         player1Field.setCaretColor(new Color(220, 235, 230));
-        player1Field.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                if (player1Field.getText().equals(" Enter Player 1 username")) {
-                    player1Field.setText("");
-                    player1Field.setForeground(new Color(220, 235, 230));
-                }
-            }
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                if (player1Field.getText().equals("")) {
-                    player1Field.setText(" Enter Player 1 username");
-                    player1Field.setForeground(new Color(140, 160, 160));
-                }
-            }
-        });
+        player1Field.setFont(new Font("Tahoma", Font.PLAIN, 13));
         leftArea.add(player1Field);
 
-        // 6 placeholder icon buttons under player1
+        // 6 character icon buttons under player1 (2 rows of 3)
         int icW = 96; int icH = 56; int gap = 8;
-        for (int r = 0; r < 2; r++) {
-            for (int c = 0; c < 3; c++) {
-                RoundedButton ib = new RoundedButton("");
-                ib.setBounds(8 + c * (icW + gap), 76 + r * (icH + gap), icW, icH);
-                ib.setText("+");
-                ib.setFont(new Font("Tahoma", Font.BOLD, 20));
-                ib.setForeground(new Color(200, 220, 200));
-                ib.setFocusPainted(false);
-                leftArea.add(ib);
+        for (int c = 0; c < NUM_CHARACTERS; c++) {
+            final int charIndex = c;
+            RoundedButton ib = new RoundedButton("");
+            int row = c / 3;
+            int col = c % 3;
+            ib.setBounds(8 + col * (icW + gap), 76 + row * (icH + gap), icW, icH);
+            if (characterImages[c] != null) {
+                Image scaledImage = characterImages[c].getScaledInstance(icW - 8, icH - 8, Image.SCALE_SMOOTH);
+                ib.setIcon(new ImageIcon(scaledImage));
             }
+            ib.setFocusPainted(false);
+            ib.setBorder(new LineBorder(new Color(80, 150, 120), 2));
+            ib.addActionListener(e -> selectCharacter(0, charIndex, ib));
+            characterButtons[0][c] = ib;
+            leftArea.add(ib);
         }
 
         // Right player area (top-right)
@@ -136,6 +157,7 @@ public class GameSetup {
 
         JLabel p2 = new JLabel("Player 2");
         p2.setForeground(new Color(170, 220, 200));
+        p2.setFont(new Font("Tahoma", Font.BOLD, 14));
         p2.setBounds(8, 0, 200, 20);
         rightArea.add(p2);
 
@@ -145,6 +167,7 @@ public class GameSetup {
         player2Field.setBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(0, 102, 51), null));
         player2Field.setForeground(new Color(140, 160, 160));
         player2Field.setCaretColor(new Color(220, 235, 230));
+        player2Field.setFont(new Font("Tahoma", Font.PLAIN, 13));
         player2Field.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusGained(java.awt.event.FocusEvent e) {
@@ -163,24 +186,22 @@ public class GameSetup {
         });
         rightArea.add(player2Field);
 
-        for (int r = 0; r < 2; r++) {
-            for (int c = 0; c < 3; c++) {
-                RoundedButton ib = new RoundedButton("");
-                ib.setBounds(8 + c * (icW + gap), 76 + r * (icH + gap), icW, icH);
-                ib.setText("+");
-                ib.setFont(new Font("Tahoma", Font.BOLD, 20));
-                ib.setForeground(new Color(200, 220, 200));
-                ib.setFocusPainted(false);
-                rightArea.add(ib);
+        for (int c = 0; c < NUM_CHARACTERS; c++) {
+            final int charIndex = c;
+            RoundedButton ib = new RoundedButton("");
+            int row = c / 3;
+            int col = c % 3;
+            ib.setBounds(8 + col * (icW + gap), 76 + row * (icH + gap), icW, icH);
+            if (characterImages[c] != null) {
+                Image scaledImage = characterImages[c].getScaledInstance(icW - 8, icH - 8, Image.SCALE_SMOOTH);
+                ib.setIcon(new ImageIcon(scaledImage));
             }
+            ib.setFocusPainted(false);
+            ib.setBorder(new LineBorder(new Color(100, 120, 180), 2));
+            ib.addActionListener(e -> selectCharacter(1, charIndex, ib));
+            characterButtons[1][c] = ib;
+            rightArea.add(ib);
         }
-
-        // Difficulty area (middle, full-width)
-        JLabel diffLbl = new JLabel("Select Difficulty");
-        diffLbl.setForeground(new Color(170, 220, 200));
-        diffLbl.setBounds(0, 320, card.getWidth(), 20);
-        diffLbl.setHorizontalAlignment(SwingConstants.CENTER);
-        card.add(diffLbl);
 
         // radio buttons inside colored menu panels with descriptions
         ButtonGroup grp = new ButtonGroup();
@@ -194,23 +215,23 @@ public class GameSetup {
         java.awt.Color orange = new java.awt.Color(200, 120, 0);
         java.awt.Color red = new java.awt.Color(160, 45, 45);
 
-        int w = 160, h = 80;
+        int w = 200, h = 140;
         JPanel easyContainer = new JPanel(null);
-        easyContainer.setBounds(120, 344, w, h);
+        easyContainer.setBounds(80, 320, w, h);
         easyContainer.setBackground(green);
         easyContainer.setOpaque(true);
         easyContainer.putClientProperty("baseColor", green);
         card.add(easyContainer);
 
         JPanel medContainer = new JPanel(null);
-        medContainer.setBounds(312, 344, w, h);
+        medContainer.setBounds(302, 320, w, h);
         medContainer.setBackground(orange);
         medContainer.setOpaque(true);
         medContainer.putClientProperty("baseColor", orange);
         card.add(medContainer);
 
         JPanel hardContainer = new JPanel(null);
-        hardContainer.setBounds(504, 344, w, h);
+        hardContainer.setBounds(524, 320, w, h);
         hardContainer.setBackground(red);
         hardContainer.setOpaque(true);
         hardContainer.putClientProperty("baseColor", red);
@@ -226,29 +247,59 @@ public class GameSetup {
         easyBtn.setForeground(Color.WHITE);
         mediumBtn.setForeground(Color.WHITE);
         hardBtn.setForeground(Color.WHITE);
+        easyBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
+        mediumBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
+        hardBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
         easyBtn.setFocusPainted(false);
         mediumBtn.setFocusPainted(false);
         hardBtn.setFocusPainted(false);
 
         // description labels inside each container
-        JLabel easyInfo = new JLabel("9×9 board : 10 Bombs");
+        JLabel easyInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "9X9 board : 10 Bombs<br><br>" +
+            "10 lives.<br>" +
+            "6 Questions.<br>" +
+            "2 Surprises.<br>" +
+            "Q/S attempt Cost : 5 points." +
+            "</div></html>"
+        );
         easyInfo.setForeground(Color.WHITE);
+        easyInfo.setFont(new Font("Tahoma", Font.BOLD, 12));
         easyInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        easyInfo.setBounds(0, 44, w, 14);
+        easyInfo.setBounds(5, 36, w - 10, h - 44);
         easyContainer.add(easyBtn);
         easyContainer.add(easyInfo);
 
-        JLabel medInfo = new JLabel("13×13 board : 26 Bombs");
+        JLabel medInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "13X13 board : 26 Bombs<br><br>" +
+            "8 lives.<br>" +
+            "7 Questions.<br>" +
+            "3 Surprises.<br>" +
+            "Q/S attempt Cost : 8 points." +
+            "</div></html>"
+        );
         medInfo.setForeground(Color.WHITE);
+        medInfo.setFont(new Font("Tahoma", Font.BOLD, 12));
         medInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        medInfo.setBounds(0, 44, w, 14);
+        medInfo.setBounds(5, 36, w - 10, h - 44);
         medContainer.add(mediumBtn);
         medContainer.add(medInfo);
 
-        JLabel hardInfo = new JLabel("16×16 board : 44 Bombs");
+        JLabel hardInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "16X16 board : 44 Bombs<br><br>" +
+            "6 lives.<br>" +
+            "11 Questions.<br>" +
+            "4 Surprises.<br>" +
+            "Q/S attempt Cost : 12 points." +
+            "</div></html>"
+        );
         hardInfo.setForeground(Color.WHITE);
+        hardInfo.setFont(new Font("Tahoma", Font.BOLD, 12));
         hardInfo.setHorizontalAlignment(SwingConstants.CENTER);
-        hardInfo.setBounds(0, 44, w, 14);
+        hardInfo.setBounds(5, 36, w - 10, h - 44);
         hardContainer.add(hardBtn);
         hardContainer.add(hardInfo);
 
@@ -283,10 +334,30 @@ public class GameSetup {
         startBtn.setBounds( card.getBounds().width - 180, 508, 140, 44);
         startBtn.setBackground(new Color(20, 120, 70));
         startBtn.setForeground(Color.WHITE);
-        startBtn.addActionListener(e -> controller.confirmStart(
-            player1Field.getText(),
-            player2Field.getText(),
-            selectedDifficulty()));
+        startBtn.addActionListener(e -> {
+            if (player1SelectedChar < 0 || player2SelectedChar < 0) {
+                showStyledDialog(
+                    "Missing Selection",
+                    "Please select icons for both players before starting.",
+                    "warning"
+                );
+                return;
+            }
+            if (player1SelectedChar == player2SelectedChar) {
+                showStyledDialog(
+                    "Duplicate Selection",
+                    "Both players must select different icons.",
+                    "warning"
+                );
+                return;
+            }
+            controller.confirmStart(
+                player1Field.getText(),
+                player2Field.getText(),
+                selectedDifficulty(),
+                player1SelectedChar,
+                player2SelectedChar);
+        });
         card.add(startBtn);
     }
 
@@ -296,6 +367,73 @@ public class GameSetup {
         if (hardBtn.isSelected()) return model.Board.Difficulty.HARD;
         return model.Board.Difficulty.MEDIUM;
     }
+    
+    // Load character icons from resources
+    private void loadCharacterIcons() {
+        for (int i = 0; i < NUM_CHARACTERS; i++) {
+            try {
+                java.net.URL iconUrl = GameSetup.class.getResource(CHARACTER_ICONS[i]);
+                if (iconUrl != null) {
+                    characterImages[i] = ImageIO.read(iconUrl);
+                } else {
+                    String iconPath = ResourceLoader.getResourcePath(CHARACTER_ICONS[i]);
+                    if (iconPath != null && !iconPath.isEmpty()) {
+                        characterImages[i] = ImageIO.read(new File(iconPath));
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Could not load character icon: " + CHARACTER_ICONS[i]);
+            }
+        }
+    }
+    
+    // Handle character selection with visual feedback
+    private void selectCharacter(int player, int charIndex, JButton btn) {
+        if (player == 0) {
+            // Player 1 selection
+            if (charIndex == player2SelectedChar) {
+                showStyledDialog(
+                    "Invalid Selection",
+                    "Player 2 already selected this character!",
+                    "error"
+                );
+                return; // Can't select same character as player 2
+            }
+            player1SelectedChar = charIndex;
+            // Update visual feedback
+            for (int i = 0; i < NUM_CHARACTERS; i++) {
+                if (i == charIndex) {
+                    characterButtons[0][i].setBorder(new LineBorder(new Color(0, 255, 100), 4));
+                } else {
+                    characterButtons[0][i].setBorder(new LineBorder(new Color(80, 150, 120), 2));
+                }
+            }
+            // Play icon picked sound effect
+            AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+        } else {
+            // Player 2 selection
+            if (charIndex == player1SelectedChar) {
+                showStyledDialog(
+                    "Invalid Selection",
+                    "Player 1 already selected this character!",
+                    "error"
+                );
+                return; // Can't select same character as player 1
+            }
+            player2SelectedChar = charIndex;
+            // Update visual feedback
+            for (int i = 0; i < NUM_CHARACTERS; i++) {
+                if (i == charIndex) {
+                    characterButtons[1][i].setBorder(new LineBorder(new Color(0, 255, 100), 4));
+                } else {
+                    characterButtons[1][i].setBorder(new LineBorder(new Color(80, 150, 120), 2));
+                }
+            }
+            // Play icon picked sound effect
+            AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+        }
+    }
+
 
     // shared style for text-only buttons at the bottom
     @SuppressWarnings("unused")
@@ -351,5 +489,57 @@ public class GameSetup {
 
         @Override
         public boolean isOpaque() { return false; }
+    }
+    
+    // Styled dialog for warnings and errors using FontManager
+    private void showStyledDialog(String title, String message, String type) {
+        JDialog dialog = new JDialog(frame);
+        dialog.setTitle(title);
+        dialog.setModal(true);
+        dialog.setSize(450, 200);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setResizable(false);
+        
+        JPanel bg = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                Color c1 = new Color(8, 45, 40);
+                Color c2 = new Color(5, 80, 60);
+                GradientPaint gp = new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2);
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        bg.setLayout(new BorderLayout(10, 10));
+        bg.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        dialog.setContentPane(bg);
+        
+        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
+        titleLabel.setForeground(type.equals("error") ? new Color(255, 100, 100) : new Color(255, 200, 100));
+        titleLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
+        bg.add(titleLabel, BorderLayout.NORTH);
+        
+        JLabel msgLabel = new JLabel("<html>" + message + "</html>", SwingConstants.CENTER);
+        msgLabel.setForeground(Color.WHITE);
+        msgLabel.setFont(new Font("Tahoma", Font.PLAIN, 12));
+        bg.add(msgLabel, BorderLayout.CENTER);
+        
+        JButton okBtn = new JButton("OK");
+        okBtn.setFont(new Font("Tahoma", Font.BOLD, 13));
+        okBtn.setBackground(new Color(0, 150, 120));
+        okBtn.setForeground(Color.WHITE);
+        okBtn.setFocusPainted(false);
+        okBtn.setBorder(BorderFactory.createLineBorder(new Color(0, 200, 170), 2));
+        okBtn.setPreferredSize(new Dimension(100, 40));
+        okBtn.addActionListener(e -> dialog.dispose());
+        
+        JPanel btnPanel = new JPanel();
+        btnPanel.setOpaque(false);
+        btnPanel.add(okBtn);
+        bg.add(btnPanel, BorderLayout.SOUTH);
+        
+        dialog.setVisible(true);
     }
 }

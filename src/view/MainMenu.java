@@ -1,8 +1,7 @@
 package view;
 
-import controller.Main.MainMenuController;
+import controller.IMainMenuController;
 import java.awt.Color;
-import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
@@ -23,17 +22,20 @@ import model.ResourceLoader;
 public class MainMenu {
 
     private JFrame frame;
-    private final MainMenuController controller;
-
-    public static void main(String[] args) {
-        // Launches the main menu (entry point for the whole game UI)
-        EventQueue.invokeLater(controller.Main::new);
-    }
+    private final IMainMenuController controller;
+    private JLabel title;
+    private JLabel subtitle;
+    private JButton startBtn;
+    private JButton historyBtn;
+    private JButton leaderboardBtn;
+    private JButton manageBtn;
+    private JButton howBtn;
+    private JButton settingsBtn;
 
     /**
      * @wbp.parser.entryPoint
      */
-    public MainMenu(MainMenuController controller) {
+    public MainMenu(IMainMenuController controller) {
         this.controller = controller;
         initialize();
     }
@@ -70,7 +72,7 @@ public class MainMenu {
                     if (bgPath != null) {
                         try {
                             img = ImageIO.read(new File(bgPath));
-                        } catch (Exception e) {
+                        } catch (java.io.IOException e) {
                             System.err.println("Could not load background image: " + e.getMessage());
                         }
                     }
@@ -121,14 +123,14 @@ public class MainMenu {
                     iconLabel.setIcon(new ImageIcon(ImageIO.read(new File(iconPath))));
                 }
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             System.err.println("Could not load nerd icon: " + e.getMessage());
         }
         iconLabel.setBounds((280 - 64) / 2, 30, 64, 64);
         sidePanel.add(iconLabel);
 
         // Place game title on side panel
-        JLabel title = new JLabel("MINESWEEPER V2");
+        title = new JLabel("MINESWEEPER V2");
         title.setHorizontalAlignment(SwingConstants.CENTER);
         title.setBounds(10, 100, 260, 44);
         sidePanel.add(title);
@@ -136,36 +138,40 @@ public class MainMenu {
         title.setFont(new Font("Tahoma", Font.BOLD, 28));
 
         // Place subtitle on side panel
-        JLabel subtitle = new JLabel("THINK BEFORE YOU CLICK");
+        subtitle = new JLabel("THINK BEFORE YOU CLICK");
         subtitle.setHorizontalAlignment(SwingConstants.CENTER);
         subtitle.setBounds(10, 150, 260, 20);
         sidePanel.add(subtitle);
         subtitle.setForeground(new Color(170, 220, 200));
         subtitle.setFont(new Font("Tahoma", Font.PLAIN, 12));
 
-        JButton startBtn = new JButton("Start Game");
+        startBtn = new JButton("Start Game");
         startBtn.setBounds(20, 300, 240, 40);
         sidePanel.add(startBtn);
         styleMenuButton(startBtn);
 
-        JButton historyBtn = new JButton("History");
+        historyBtn = new JButton("History");
         historyBtn.setBounds(20, 350, 240, 40);
         sidePanel.add(historyBtn);
         styleMenuButton(historyBtn);
 
-        JButton manageBtn = new JButton("Manage Questions");
-        manageBtn.setBounds(20, 400, 240, 40);
+        leaderboardBtn = new JButton("LeaderBoard");
+        leaderboardBtn.setBounds(20, 400, 240, 40);
+        sidePanel.add(leaderboardBtn);
+        styleMenuButton(leaderboardBtn);
+
+        manageBtn = new JButton("Manage Questions");
+        manageBtn.setBounds(20, 450, 240, 40);
         sidePanel.add(manageBtn);
         styleMenuButton(manageBtn);
-        manageBtn.addActionListener(e -> controller.openManageQuestions());
         
-        JButton howBtn = new JButton("How to Play");
-        howBtn.setBounds(20, 450, 240, 40);
+        howBtn = new JButton("How to Play");
+        howBtn.setBounds(20, 500, 240, 40);
         sidePanel.add(howBtn);
         styleMenuButton(howBtn);
 
         // Settings button in top right corner with cog icon
-        JButton settingsBtn = new JButton();
+        settingsBtn = new JButton();
         settingsBtn.setBounds(W - 75, 10, 50, 50);
         settingsBtn.setFocusPainted(false);
         settingsBtn.setContentAreaFilled(false);
@@ -211,6 +217,7 @@ public class MainMenu {
         howBtn.addActionListener(e -> controller.openHowToPlay());
         manageBtn.addActionListener(e -> controller.openManageQuestions());
         historyBtn.addActionListener(e -> controller.openHistory());
+        leaderboardBtn.addActionListener(e -> controller.openLeaderBoard());
         startBtn.addActionListener(e -> controller.startGame());
         settingsBtn.addActionListener(e -> controller.openSettings());
 
@@ -225,7 +232,7 @@ public class MainMenu {
                     frame.setIconImage(ImageIO.read(new File(iconPath)));
                 }
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             System.err.println("Could not set window icon: " + e.getMessage());
         }   
     }

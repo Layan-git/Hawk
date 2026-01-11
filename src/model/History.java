@@ -1,11 +1,8 @@
 package model;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class History implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class History {
 
     // --------- Fields ---------
 
@@ -13,6 +10,8 @@ public class History implements Serializable {
 
     private String player1Name;         // name shown on left board
     private String player2Name;         // name shown on right board
+    
+    private String username;            // username of the player who played
 
     // e.g. "Easy", "Medium", "Hard" – stored as text for display
     private String difficulty;
@@ -26,18 +25,21 @@ public class History implements Serializable {
     // how long the whole game took (in seconds)
     private long durationSeconds;
 
-    // stats from the game – can be shown in history / stats screen
+    // stats from the game – can be shown in history / stats screen (unused attributes will be implemented in the future)
     private int minesHit;
     private int questionsAnswered;
     private int correctQuestions;
+    @SuppressWarnings("unused")
     private int wrongQuestions;
+    @SuppressWarnings("unused")
     private int surprisesTriggered;
+    @SuppressWarnings("unused")
     private int positiveSurprises;
+    @SuppressWarnings("unused")
     private int negativeSurprises;
+    @SuppressWarnings("unused")
     private int livesRemaining;
 
-    // who was logged in when playing
-    private String username;
 
     // --------- Constructors ---------
 
@@ -79,6 +81,7 @@ public class History implements Serializable {
         this.livesRemaining = livesRemaining;
         this.username = username;
     }
+
 
     // --------- Getters and Setters ---------
 

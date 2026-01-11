@@ -2,6 +2,10 @@ package model;
 
 import java.util.*;
 
+/**
+ * Board class representing the game board with cells, mines, and special cells.
+ * Uses CellFactory for creating cells with the Factory design pattern.
+ */
 public class Board {
 
     public enum Difficulty {
@@ -49,10 +53,10 @@ public class Board {
     }
 
     private void initEmptyBoard() {
-        // create all cells as EMPTY (no mines / specials yet)
+        // factory pattern - all cells created same way through factory
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                cells[r][c] = new Cell(r, c);
+                cells[r][c] = CellFactory.createCell(Cell.CellType.EMPTY, r, c);
             }
         }
     }
@@ -67,7 +71,7 @@ public class Board {
             int c = random.nextInt(cols);
 
             if (!cells[r][c].isMine()) {
-                cells[r][c].setType(Cell.CellType.MINE);
+                cells[r][c] = CellFactory.createCell(Cell.CellType.MINE, r, c);
                 count++;
             }
         }
@@ -107,7 +111,7 @@ public class Board {
         int questionCells = 0;
         int surpriseCells = 0;
 
-        // how many specials we want for each difficulty
+        // how many specials we want for each game difficulty
         switch (difficulty) {
             case EASY -> {
                 questionCells = 6;
@@ -292,7 +296,7 @@ public class Board {
         int count = 0;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if (cells[r][c].isMine() && !cells[r][c].isRevealed()) {
+                if (cells[r][c].isMine() && !cells[r][c].isRevealed() && !cells[r][c].isFlagged()) {
                     count++;
                 }
             }
