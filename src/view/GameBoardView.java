@@ -52,6 +52,8 @@ public class GameBoardView implements GameObserver {
     private JButton safetyNetButton;
     private JButton metalDetectorButton;
     private JLabel momentumLabel;
+    private JPanel momentumPanel;
+    private JPanel shopPanel;
     private JLabel shopStatusLabel;
     private JLabel metalDetectorTimerLabel;
 
@@ -66,6 +68,9 @@ public class GameBoardView implements GameObserver {
     private BufferedImage player2CharIcon;
     private JLabel player1CharLabel;
     private JLabel player2CharLabel;
+    private JLabel stabilizerLabel;
+    private JButton stabilizerBtnRef;
+    private BufferedImage stabilizerIcon;
     private static final int CHARACTER_DISPLAY_SIZE = 40;
     
     // Store board references for metal detector
@@ -91,6 +96,9 @@ public class GameBoardView implements GameObserver {
     private static final int CELL_ICON_SIZE = 32;
     private static final int QUESTION_ICON_SIZE = 24;
     private static final int BUTTON_ICON_SIZE = 20;
+    
+    // Stabilizer state tracking
+    private boolean stabilizerAvailable = false;
 
     // Colors
     private static final Color COLOR_HIDDEN = new Color(60, 80, 95);
@@ -117,6 +125,7 @@ public class GameBoardView implements GameObserver {
     private static final Color EASY_COLOR = new Color(20, 120, 70);
     private static final Color MEDIUM_COLOR = new Color(200, 120, 0);
     private static final Color HARD_COLOR = new Color(160, 45, 45);
+    private static final Color EXTREME_COLOR = new Color(100, 50, 150);
     
     private Border difficultyInactiveP1;
     private Border difficultyInactiveP2;
@@ -230,8 +239,11 @@ public class GameBoardView implements GameObserver {
         // Player 1 board + labels
         gbc.gridx = 0;
         gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 0, 0);  // Remove insets for board row to eliminate gap
         player1Container = new JPanel(new BorderLayout(0, 8));
         player1Container.setOpaque(false);
+        player1Container.setFocusable(false);
+        player1Container.setFocusTraversalPolicyProvider(false);
         // border color will change on active turn
         player1Container.setBorder(INACTIVE_BORDER_P1);
 
@@ -246,17 +258,35 @@ public class GameBoardView implements GameObserver {
         player1Container.add(player1MinesLeftLabel, BorderLayout.SOUTH);
 
         JPanel board1Wrapper = new JPanel(new GridBagLayout());
-        board1Wrapper.setOpaque(false);
+        board1Wrapper.setOpaque(true);
+        board1Wrapper.setBackground(new Color(20, 20, 20));
+        board1Wrapper.setFocusable(false);
+        board1Wrapper.setFocusTraversalPolicyProvider(false);
 
         boardPanel1 = new JPanel(new GridLayout(boardSize, boardSize, 1, 1));
         boardPanel1.setBackground(new Color(20, 20, 20));
         boardPanel1.setBorder(new LineBorder(new Color(30, 30, 30), 2));
+        boardPanel1.setFocusable(false);
 
         GridBagConstraints innerGbc = new GridBagConstraints();
         innerGbc.fill = GridBagConstraints.BOTH;
-        innerGbc.weightx = 1.0;
-        innerGbc.weighty = 1.0;
+        innerGbc.insets = new Insets(0, 0, 0, 0);
+        // For HARD difficulty, use fixed sizing. For others, use flexible sizing
+        if (gameDifficulty == model.Board.Difficulty.HARD) {
+            innerGbc.weightx = 0.0;
+            innerGbc.weighty = 0.0;
+        } else {
+            innerGbc.weightx = 1.0;
+            innerGbc.weighty = 1.0;
+        }
         board1Wrapper.add(boardPanel1, innerGbc);
+
+        // Set fixed size for HARD, flexible for others
+        if (gameDifficulty == model.Board.Difficulty.HARD) {
+            board1Wrapper.setPreferredSize(new Dimension(520, 520));
+            board1Wrapper.setMinimumSize(new Dimension(520, 520));
+            board1Wrapper.setMaximumSize(new Dimension(520, 520));
+        }
 
         player1Container.add(board1Wrapper, BorderLayout.CENTER);
         // create all buttons for player 1 and hook up mouse events to controller
@@ -268,6 +298,8 @@ public class GameBoardView implements GameObserver {
         gbc.gridy = 1;
         player2Container = new JPanel(new BorderLayout(0, 8));
         player2Container.setOpaque(false);
+        player2Container.setFocusable(false);
+        player2Container.setFocusTraversalPolicyProvider(false);
         player2Container.setBorder(INACTIVE_BORDER_P2);
 
         player2NameLabel = new JLabel(p2Name + "'s Board", SwingConstants.CENTER);
@@ -281,12 +313,23 @@ public class GameBoardView implements GameObserver {
         player2Container.add(player2MinesLeftLabel, BorderLayout.SOUTH);
 
         JPanel board2Wrapper = new JPanel(new GridBagLayout());
-        board2Wrapper.setOpaque(false);
+        board2Wrapper.setOpaque(true);
+        board2Wrapper.setBackground(new Color(20, 20, 20));
+        board2Wrapper.setFocusable(false);
+        board2Wrapper.setFocusTraversalPolicyProvider(false);
 
         boardPanel2 = new JPanel(new GridLayout(boardSize, boardSize, 1, 1));
         boardPanel2.setBackground(new Color(20, 20, 20));
         boardPanel2.setBorder(new LineBorder(new Color(30, 30, 30), 2));
+        boardPanel2.setFocusable(false);
         board2Wrapper.add(boardPanel2, innerGbc);
+
+        // Set fixed size for HARD, flexible for others
+        if (gameDifficulty == model.Board.Difficulty.HARD) {
+            board2Wrapper.setPreferredSize(new Dimension(520, 520));
+            board2Wrapper.setMinimumSize(new Dimension(520, 520));
+            board2Wrapper.setMaximumSize(new Dimension(520, 520));
+        }
 
         player2Container.add(board2Wrapper, BorderLayout.CENTER);
         // same for player 2 board
@@ -300,7 +343,7 @@ public class GameBoardView implements GameObserver {
         bottomWrapper.setOpaque(false);
         
         // Shop panel (top of bottom section)
-        JPanel shopPanel = createShopPanel();
+        createShopPanel();
         bottomWrapper.add(shopPanel, BorderLayout.NORTH);
 
         // Controls panel with status text (pause/quit buttons moved to HUD)
@@ -324,32 +367,34 @@ public class GameBoardView implements GameObserver {
     
     // Create the shop panel with buy buttons and status
     private JPanel createShopPanel() {
-        JPanel shopPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10));
+        shopPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10));
         shopPanel.setOpaque(false);
         
-        // Momentum Multiplier display
-        JPanel momentumPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        // Momentum Multiplier display - EXTREME difficulty only
+        momentumPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         momentumPanel.setOpaque(false);
         
         // Add electric bolt icon
         JLabel boltIconLabel = new JLabel();
         java.awt.image.BufferedImage boltIcon = model.ResourceLoader.loadImage("/resources/electric_bolt.png");
         if (boltIcon != null) {
-            Image scaledBolt = boltIcon.getScaledInstance(16, 16, Image.SCALE_SMOOTH);
+            Image scaledBolt = boltIcon.getScaledInstance(32, 32, Image.SCALE_SMOOTH);
             boltIconLabel.setIcon(new ImageIcon(scaledBolt));
         }
         momentumPanel.add(boltIconLabel);
         
         JLabel momentumTitle = new JLabel("Momentum:");
-        momentumTitle.setFont(new Font("Tahoma", Font.BOLD, 14));
+        momentumTitle.setFont(new Font("Tahoma", Font.BOLD, 18));
         momentumTitle.setForeground(new Color(255, 215, 0));
         momentumPanel.add(momentumTitle);
         
         momentumLabel = new JLabel("0 streak");
-        momentumLabel.setFont(new Font("Tahoma", Font.PLAIN, 14));
+        momentumLabel.setFont(new Font("Tahoma", Font.PLAIN, 18));
         momentumLabel.setForeground(Color.WHITE);
         momentumPanel.add(momentumLabel);
-        shopPanel.add(momentumPanel);
+        
+        // Note: momentum panel will be added conditionally in setBoards() based on difficulty
+        // shopPanel.add(momentumPanel);
         
         shopPanel.add(Box.createHorizontalStrut(20));
         
@@ -461,6 +506,29 @@ public class GameBoardView implements GameObserver {
         // Add separator
         panel.add(Box.createHorizontalStrut(30));
         
+        // Stabilizer icon display as button
+        JButton stabilizerBtn = new JButton();
+        if (stabilizerIcon != null) {
+            Image scaledStabilizer = stabilizerIcon.getScaledInstance(CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE, Image.SCALE_SMOOTH);
+            stabilizerBtn.setIcon(new ImageIcon(scaledStabilizer));
+        }
+        stabilizerBtn.setPreferredSize(new Dimension(CHARACTER_DISPLAY_SIZE + 10, CHARACTER_DISPLAY_SIZE + 10));
+        stabilizerBtn.setBorderPainted(true);
+        stabilizerBtn.setBorder(new LineBorder(new Color(100, 200, 200), 2, true));
+        stabilizerBtn.setContentAreaFilled(false);
+        stabilizerBtn.setFocusPainted(false);
+        stabilizerBtn.setVisible(false);  // Initially hidden, shown only for EXTREME
+        stabilizerBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        stabilizerBtn.addActionListener(e -> showStabilizerInfoDialog());
+        stabilizerLabel = new JLabel();  // Keep for compatibility with other methods
+        panel.add(stabilizerBtn);
+        
+        // Store button reference for state updates
+        stabilizerBtnRef = stabilizerBtn;
+        
+        // Add separator
+        panel.add(Box.createHorizontalStrut(10));
+        
         // Pause button
         JButton pauseBtn = new JButton("Pause");
         if (pauseIcon != null) {
@@ -544,6 +612,7 @@ public class GameBoardView implements GameObserver {
             safetyNetIcon = loadIcon("/resources/net.png");
             pauseIcon = loadIcon("/resources/pause-button.png");
             exitIcon = loadIcon("/resources/exit.png");
+            stabilizerIcon = loadIcon("/resources/defibrillator.png");
         } catch (Exception e) {
             System.err.println("Could not load game icons: " + e.getMessage());
         }
@@ -1006,7 +1075,13 @@ public class GameBoardView implements GameObserver {
     // -------------------------------
     
     public void updateMomentumDisplay(int streak, String tierDescription) {
-        momentumLabel.setText(streak + " streak - " + tierDescription);
+        // Only show momentum for EXTREME difficulty
+        if (board1 != null && board1.getDifficulty() == model.Board.Difficulty.EXTREME) {
+            momentumLabel.setText(streak + " streak - " + tierDescription);
+            momentumLabel.setVisible(true);
+        } else if (momentumLabel != null) {
+            momentumLabel.setVisible(false);
+        }
     }
     
     public void updateShopButtons(int currentScore, boolean safetyNetActive, boolean metalDetectorActive, int safetyNetPurchases, int metalDetectorPurchases) {
@@ -1068,6 +1143,35 @@ public class GameBoardView implements GameObserver {
         // Update info panel border based on difficulty
         if (b1 != null) {
             model.Board.Difficulty difficulty = b1.getDifficulty();
+            
+            // Initialize stabilizer display for EXTREME difficulty
+            if (difficulty == model.Board.Difficulty.EXTREME) {
+                setStabilizerAvailable();
+            }
+            
+            // Only add momentum panel for EXTREME difficulty
+            if (difficulty == model.Board.Difficulty.EXTREME) {
+                // Add momentum panel if not already added
+                if (momentumPanel.getParent() == null) {
+                    // Find the shop panel and add momentum panel to it
+                    // We need to add it at the right position in the hierarchy
+                    for (Component comp : shopPanel.getComponents()) {
+                        if (comp instanceof JLabel && "SHOP".equals(((JLabel) comp).getText())) {
+                            // Insert momentum panel before SHOP title
+                            int index = shopPanel.getComponentZOrder(comp);
+                            shopPanel.add(momentumPanel, index);
+                            shopPanel.add(Box.createHorizontalStrut(20), index + 1);
+                            break;
+                        }
+                    }
+                    if (momentumPanel.getParent() == null) {
+                        // Fallback: just add at the beginning
+                        shopPanel.add(momentumPanel, 0);
+                        shopPanel.add(Box.createHorizontalStrut(20), 1);
+                    }
+                }
+            }
+            
             Color borderColor;
             switch (difficulty) {
                 case EASY:
@@ -1078,6 +1182,9 @@ public class GameBoardView implements GameObserver {
                     break;
                 case HARD:
                     borderColor = HARD_COLOR;
+                    break;
+                case EXTREME:
+                    borderColor = EXTREME_COLOR;
                     break;
                 default:
                     borderColor = new Color(0, 200, 255);  // Default cyan
@@ -1158,6 +1265,146 @@ public class GameBoardView implements GameObserver {
         if (livesPanel != null) {
             updateLives(lives);
         }
+    }
+
+    /**
+     * Updates the stabilizer display to show it's available (lit up with full color)
+     */
+    public void setStabilizerAvailable() {
+        if (stabilizerBtnRef == null || stabilizerIcon == null) return;
+        
+        stabilizerAvailable = true;
+        stabilizerBtnRef.setVisible(true);
+        // Display the icon at full brightness
+        Image scaledStabilizer = stabilizerIcon.getScaledInstance(CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE, Image.SCALE_SMOOTH);
+        stabilizerBtnRef.setIcon(new ImageIcon(scaledStabilizer));
+    }
+
+    /**
+     * Updates the stabilizer display to show it's been used (grayed out)
+     */
+    public void setStabilizerUsed() {
+        if (stabilizerBtnRef == null || stabilizerIcon == null) return;
+        
+        stabilizerAvailable = false;
+        // Create a grayed out version of the icon
+        java.awt.image.BufferedImage grayedIcon = new java.awt.image.BufferedImage(
+            stabilizerIcon.getWidth(), 
+            stabilizerIcon.getHeight(), 
+            java.awt.image.BufferedImage.TYPE_INT_RGB
+        );
+        
+        // Convert to grayscale
+        for (int y = 0; y < stabilizerIcon.getHeight(); y++) {
+            for (int x = 0; x < stabilizerIcon.getWidth(); x++) {
+                int rgb = stabilizerIcon.getRGB(x, y);
+                int a = (rgb >> 24) & 0xFF;
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                
+                // Calculate grayscale using luminance formula
+                int gray = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+                // Reduce brightness by 50%
+                gray = gray / 2;
+                
+                int grayRgb = (a << 24) | (gray << 16) | (gray << 8) | gray;
+                grayedIcon.setRGB(x, y, grayRgb);
+            }
+        }
+        
+        Image scaledGrayed = grayedIcon.getScaledInstance(CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE, Image.SCALE_SMOOTH);
+        stabilizerBtnRef.setIcon(new ImageIcon(scaledGrayed));
+    }
+
+    /**
+     * Shows the stabilizer information dialog when the button is clicked
+     */
+    private void showStabilizerInfoDialog() {
+        JDialog dialog = new JDialog();
+        dialog.setTitle("Stabilizer");
+        dialog.setModal(true);
+        dialog.setSize(500, 370);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setResizable(false);
+        
+        // Main panel with gradient background
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                Color c1 = new Color(8, 45, 40);
+                Color c2 = new Color(5, 80, 60);
+                GradientPaint gp = new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2);
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        // Icon and title
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setOpaque(false);
+        if (stabilizerIcon != null) {
+            Image scaledIcon = stabilizerIcon.getScaledInstance(48, 48, Image.SCALE_SMOOTH);
+            JLabel iconLabel = new JLabel(new ImageIcon(scaledIcon));
+            titlePanel.add(iconLabel);
+        }
+        JLabel titleLabel = new JLabel("STABILIZER");
+        titleLabel.setFont(new Font("Tahoma", Font.BOLD, 20));
+        titleLabel.setForeground(new Color(255, 200, 0));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titlePanel.add(titleLabel);
+        titlePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(titlePanel);
+        mainPanel.add(Box.createVerticalStrut(10));
+        
+        // Status
+        JLabel statusLabel = new JLabel(stabilizerAvailable ? "Status: AVAILABLE" : "Status: USED");
+        statusLabel.setFont(new Font("Tahoma", Font.BOLD, 14));
+        statusLabel.setForeground(stabilizerAvailable ? new Color(0, 255, 128) : new Color(200, 100, 100));
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(statusLabel);
+        mainPanel.add(Box.createVerticalStrut(15));
+        
+        // Description - create wrapper to ensure left alignment
+        JPanel descPanel = new JPanel();
+        descPanel.setOpaque(false);
+        descPanel.setLayout(new BorderLayout());
+        JLabel descLabel = new JLabel("<html>" +
+            "1. The Stabilizer is a special feature available only in EXTREME difficulty.<br><br>" +
+            "2. When you hit a mine on your LAST LIFE, instead of losing immediately,<br>" +
+            "you get one chance to answer a HARD question.<br><br>" +
+            "3. If you answer correctly, the mine is disabled and flagged!<br>" +
+            "If you answer incorrectly, you lose the game.<br><br>" +
+            "4. You can only use the Stabilizer ONCE per game." +
+            "</html>");
+        descLabel.setFont(new Font("Tahoma", Font.PLAIN, 12));
+        descLabel.setForeground(Color.WHITE);
+        descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        descLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        descPanel.add(descLabel, BorderLayout.WEST);
+        mainPanel.add(descPanel);
+        mainPanel.add(Box.createVerticalStrut(15));
+        
+        // Close button
+        JButton closeBtn = new JButton("Close");
+        closeBtn.setFont(new Font("Tahoma", Font.BOLD, 13));
+        closeBtn.setBackground(new Color(100, 150, 200));
+        closeBtn.setForeground(Color.WHITE);
+        closeBtn.setFocusPainted(false);
+        closeBtn.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(150, 180, 220), 2, true),
+                BorderFactory.createEmptyBorder(5, 20, 5, 20)
+        ));
+        closeBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        closeBtn.addActionListener(e -> dialog.dispose());
+        mainPanel.add(closeBtn);
+        
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
     }
 
     public static void main(String[] args) {

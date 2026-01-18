@@ -8,7 +8,7 @@ public class HardScoringStrategy implements ScoringStrategy {
 
     @Override
     public int pointsForSafeCell() {
-        return 3; // 3 points for revealing a safe cell in hard mode
+        return 1; // 1 point for revealing a safe cell in hard mode (momentum bonuses only for EXTREME)
     }
 
     @Override

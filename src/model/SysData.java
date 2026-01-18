@@ -369,7 +369,6 @@ public class SysData {
     // Add a game history record and save to CSV
     public static void addHistory(History history) {
         if (history != null) {
-            System.out.println("Adding history for game: " + history.getDateTime());
             historyList.add(history);
             HistoryManager.writeHistory(history);
         }

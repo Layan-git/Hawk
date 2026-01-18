@@ -39,6 +39,7 @@ public class GameSetup {
     private JRadioButton easyBtn;
     private JRadioButton mediumBtn;
     private JRadioButton hardBtn;
+    private JRadioButton extremeBtn;
     
     // Character selection
     private static final String[] CHARACTER_ICONS = {
@@ -62,7 +63,7 @@ public class GameSetup {
 
     private void initialize() {
         int W = 1024;
-        int H = 768;
+        int H = 868;
 
         frame = new JFrame("Game Setup");
         frame.setBounds(100, 100, W, H);
@@ -98,7 +99,7 @@ public class GameSetup {
         JPanel card = new JPanel();
         card.setOpaque(false);
         card.setBorder(null);
-        card.setBounds(120, 80, 784, 600);
+        card.setBounds(120, 80, 784, 700);
         card.setLayout(null);
         bg.add(card);
         // Title at top-center
@@ -125,9 +126,9 @@ public class GameSetup {
         player1Field.setBounds(8, 26, 324, 36);
         player1Field.setOpaque(false);
         player1Field.setBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(0, 102, 51), null));
-        player1Field.setForeground(new Color(220, 235, 230));
-        player1Field.setCaretColor(new Color(220, 235, 230));
-        player1Field.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        player1Field.setForeground(Color.WHITE);
+        player1Field.setCaretColor(Color.WHITE);
+        player1Field.setFont(new Font("Tahoma", Font.PLAIN, 18));
         leftArea.add(player1Field);
 
         // 6 character icon buttons under player1 (2 rows of 3)
@@ -165,15 +166,15 @@ public class GameSetup {
         player2Field.setBounds(8, 26, 324, 36);
         player2Field.setOpaque(false);
         player2Field.setBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(0, 102, 51), null));
-        player2Field.setForeground(new Color(140, 160, 160));
-        player2Field.setCaretColor(new Color(220, 235, 230));
-        player2Field.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        player2Field.setForeground(Color.WHITE);
+        player2Field.setCaretColor(Color.WHITE);
+        player2Field.setFont(new Font("Tahoma", Font.PLAIN, 18));
         player2Field.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusGained(java.awt.event.FocusEvent e) {
                 if (player2Field.getText().equals(" Enter Player 2 username")) {
                     player2Field.setText("");
-                    player2Field.setForeground(new Color(220, 235, 230));
+                    player2Field.setForeground(Color.WHITE);
                 }
             }
             @Override
@@ -208,12 +209,15 @@ public class GameSetup {
         easyBtn = new JRadioButton("Easy");
         mediumBtn = new JRadioButton("Medium");
         hardBtn = new JRadioButton("Hard");
+        extremeBtn = new JRadioButton("Extreme");
         easyBtn.setHorizontalAlignment(SwingConstants.CENTER);
         mediumBtn.setHorizontalAlignment(SwingConstants.CENTER);
         hardBtn.setHorizontalAlignment(SwingConstants.CENTER);
+        extremeBtn.setHorizontalAlignment(SwingConstants.CENTER);
         java.awt.Color green = new java.awt.Color(20, 120, 70);
         java.awt.Color orange = new java.awt.Color(200, 120, 0);
         java.awt.Color red = new java.awt.Color(160, 45, 45);
+        java.awt.Color purple = new java.awt.Color(100, 50, 150);
 
         int w = 200, h = 140;
         JPanel easyContainer = new JPanel(null);
@@ -237,22 +241,34 @@ public class GameSetup {
         hardContainer.putClientProperty("baseColor", red);
         card.add(hardContainer);
 
+        JPanel extremeContainer = new JPanel(null);
+        extremeContainer.setBounds(302, 480, w, h);
+        extremeContainer.setBackground(purple);
+        extremeContainer.setOpaque(true);
+        extremeContainer.putClientProperty("baseColor", purple);
+        card.add(extremeContainer);
+
         // configure radios and add into containers
         easyBtn.setBounds((w-100)/2, 8, 100, 28);
         mediumBtn.setBounds((w-100)/2, 8, 100, 28);
         hardBtn.setBounds((w-100)/2, 8, 100, 28);
+        extremeBtn.setBounds((w-100)/2, 8, 100, 28);
         easyBtn.setOpaque(false);
         mediumBtn.setOpaque(false);
         hardBtn.setOpaque(false);
+        extremeBtn.setOpaque(false);
         easyBtn.setForeground(Color.WHITE);
         mediumBtn.setForeground(Color.WHITE);
         hardBtn.setForeground(Color.WHITE);
+        extremeBtn.setForeground(Color.WHITE);
         easyBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
         mediumBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
         hardBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
+        extremeBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
         easyBtn.setFocusPainted(false);
         mediumBtn.setFocusPainted(false);
         hardBtn.setFocusPainted(false);
+        extremeBtn.setFocusPainted(false);
 
         // description labels inside each container
         JLabel easyInfo = new JLabel(
@@ -303,35 +319,67 @@ public class GameSetup {
         hardContainer.add(hardBtn);
         hardContainer.add(hardInfo);
 
+        JLabel extremeInfo = new JLabel(
+            "<html><div style='text-align: center;'>" +
+            "13X13 board : 30 Bombs<br><br>" +
+            "6 lives.<br>" +
+            "11 Questions.<br>" +
+            "4 Surprises.<br>" +
+            "Q/S attempt Cost : 12 points." +
+            "</div></html>"
+        );
+        extremeInfo.setForeground(Color.WHITE);
+        extremeInfo.setFont(new Font("Tahoma", Font.BOLD, 12));
+        extremeInfo.setHorizontalAlignment(SwingConstants.CENTER);
+        extremeInfo.setBounds(5, 36, w - 10, h - 44);
+        extremeContainer.add(extremeBtn);
+        extremeContainer.add(extremeInfo);
+
         grp.add(easyBtn);
         grp.add(mediumBtn);
         grp.add(hardBtn);
+        grp.add(extremeBtn);
 
         // selection visual: highlight selected panel
         easyBtn.addItemListener(e -> {
-            if (easyBtn.isSelected()) updateSelectionVisuals(easyContainer, medContainer, hardContainer);
+            if (easyBtn.isSelected()) {
+                AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+                updateSelectionVisuals(easyContainer, medContainer, hardContainer, extremeContainer);
+            }
         });
         mediumBtn.addItemListener(e -> {
-            if (mediumBtn.isSelected()) updateSelectionVisuals(medContainer, easyContainer, hardContainer);
+            if (mediumBtn.isSelected()) {
+                AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+                updateSelectionVisuals(medContainer, easyContainer, hardContainer, extremeContainer);
+            }
         });
         hardBtn.addItemListener(e -> {
-            if (hardBtn.isSelected()) updateSelectionVisuals(hardContainer, easyContainer, medContainer);
+            if (hardBtn.isSelected()) {
+                AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+                updateSelectionVisuals(hardContainer, easyContainer, medContainer, extremeContainer);
+            }
+        });
+        extremeBtn.addItemListener(e -> {
+            if (extremeBtn.isSelected()) {
+                AudioManager.getInstance().playSoundEffect("icon_picked.wav");
+                updateSelectionVisuals(extremeContainer, easyContainer, medContainer, hardContainer);
+            }
         });
 
         mediumBtn.setSelected(true);  // default difficulty
         // initialize visuals
-        updateSelectionVisuals(medContainer, easyContainer, hardContainer);
+        updateSelectionVisuals(medContainer, easyContainer, hardContainer, extremeContainer);
 
         // bottom left cancel and bottom right start buttons
         RoundedButton cancelBtn = new RoundedButton("Cancel");
-        cancelBtn.setBounds(40, 508, 140, 44);
+        cancelBtn.setBounds(40, 608, 140, 44);
         cancelBtn.setBackground(new Color(120, 30, 30));
         cancelBtn.setForeground(Color.WHITE);
         cancelBtn.addActionListener(e -> controller.backToMenu());
         card.add(cancelBtn);
 
         RoundedButton startBtn = new RoundedButton("Start Game");
-        startBtn.setBounds( card.getBounds().width - 180, 508, 140, 44);
+        startBtn.setBounds( card.getBounds().width - 180, 608, 140, 44);
         startBtn.setBackground(new Color(20, 120, 70));
         startBtn.setForeground(Color.WHITE);
         startBtn.addActionListener(e -> {
@@ -365,6 +413,7 @@ public class GameSetup {
     private model.Board.Difficulty selectedDifficulty() {
         if (easyBtn.isSelected()) return model.Board.Difficulty.EASY;
         if (hardBtn.isSelected()) return model.Board.Difficulty.HARD;
+        if (extremeBtn.isSelected()) return model.Board.Difficulty.EXTREME;
         return model.Board.Difficulty.MEDIUM;
     }
     

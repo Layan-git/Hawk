@@ -11,7 +11,8 @@ public class Board {
     public enum Difficulty {
         EASY,
         MEDIUM,
-        HARD
+        HARD,
+        EXTREME
     }
 
     private final Difficulty difficulty;
@@ -48,6 +49,11 @@ public class Board {
                 rows = 16;
                 cols = 16;
                 totalMines = 44;
+            }
+            case EXTREME -> {
+                rows = 13;
+                cols = 13;
+                totalMines = 30;
             }
         }
     }
@@ -122,6 +128,10 @@ public class Board {
                 surpriseCells = 3;
             }
             case HARD -> {
+                questionCells = 11;
+                surpriseCells = 4;
+            }
+            case EXTREME -> {
                 questionCells = 11;
                 surpriseCells = 4;
             }

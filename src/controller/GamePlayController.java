@@ -55,6 +55,7 @@ public class GamePlayController {
     
     // Game history tracking
     private long gameStartTime = 0;
+    private boolean gameSaved = false;  // Prevent duplicate history saves
     
     // Statistics tracking for history
     private int totalSurprisesTriggered = 0;
@@ -84,6 +85,7 @@ public class GamePlayController {
         currentQuestionDifficulty = 1;
         currentPlayer = 1;
         gameStartTime = System.currentTimeMillis();  // Track game start time for history
+        gameSaved = false;  // Reset save flag for new game
         
         // Reset statistics tracking
         totalSurprisesTriggered = 0;
@@ -118,6 +120,7 @@ public class GamePlayController {
             case EASY -> 9;
             case MEDIUM -> 13;
             case HARD -> 16;
+            case EXTREME -> 13;
         };
         
         // Create game board view
@@ -267,17 +270,26 @@ public class GamePlayController {
             currentBoard.reveal(row, col);
             updateBoardDisplay(playerNum, currentBoard);
             
-            gameManager.awardSafeCellWithMomentum();
+            // Momentum only for EXTREME difficulty
+            if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+                gameManager.awardSafeCellWithMomentum();
+            } else {
+                gameManager.awardSafeCell();
+            }
             gameBoardView.updateScore(gameManager.getScore());
             gameBoardView.updateShopButtons(gameManager.getScore(), 
                     gameManager.isSafetyNetActive(), 
                     gameManager.isMetalDetectorActive(),
                     gameManager.getSafetyNetPurchases(),
                     gameManager.getMetalDetectorPurchases());
-            gameBoardView.updateMomentumDisplay(
-                    gameManager.getConsecutiveSafeCells(),
-                    gameManager.getMomentumTierDescription()
-            );
+            
+            // Only show momentum display for EXTREME
+            if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
+            }
             
             // Check if player won
             if (checkWinCondition(currentBoard)) {
@@ -315,9 +327,11 @@ public class GamePlayController {
             return;
         }
         
-        // Check Stabilizer (once per game, on last life)
-        if (gameManager.isOnLastLife() && !stabilizerUsed) {
+        // Check Stabilizer (once per game, on last life) - EXTREME DIFFICULTY ONLY
+        if (gameManager.getDifficulty() == Board.Difficulty.EXTREME &&
+                gameManager.isOnLastLife() && !stabilizerUsed) {
             stabilizerUsed = true;
+            gameBoardView.setStabilizerUsed();  // Update UI to show stabilizer is used
             showStabilizerQuestion(playerNum, row, col);
             return;
         }
@@ -331,10 +345,14 @@ public class GamePlayController {
         totalMinesHit++;  // Track mine hit for history
         gameBoardView.updateLives(gameManager.getLives());
         gameBoardView.updateMinesLeft(playerNum, currentBoard.getHiddenMineCount());
-        gameBoardView.updateMomentumDisplay(
-                gameManager.getConsecutiveSafeCells(),
-                gameManager.getMomentumTierDescription()
-        );
+        
+        // Only show momentum display for EXTREME
+        if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+            gameBoardView.updateMomentumDisplay(
+                    gameManager.getConsecutiveSafeCells(),
+                    gameManager.getMomentumTierDescription()
+            );
+        }
         
         // Play explosion sound effect
         model.AudioManager.getInstance().playSoundEffect("expolsion.wav");  // Note: filename has typo "expolsion"
@@ -346,9 +364,9 @@ public class GamePlayController {
             return;
         }
         
-        // Only show momentum loss message if player had 5+ streak (Tier 1 or higher)
+        // Only show momentum loss message for EXTREME if player had 5+ streak (Tier 1 or higher)
         String message = "You stepped on a mine.\nYou lost 1 life.";
-        if (prevMomentum >= 5) {
+        if (gameManager.getDifficulty() == Board.Difficulty.EXTREME && prevMomentum >= 5) {
             message += "\nMomentum multiplier reset!";
         }
         
@@ -503,7 +521,7 @@ public class GamePlayController {
             if (isBoardComplete(otherBoard)) {
                 // Both players finished - game ends in win
                 showWinAnimation();
-                saveGameHistory(true);
+                // Note: History already saved at line 295, don't save again
                 quitToMenu();
                 return;
             }
@@ -578,6 +596,16 @@ public class GamePlayController {
             Board board = (playerNum == 1) ? board1 : board2;
             board.getCell(row, col).setState(CellState.REVEALED);
             gameBoardView.updateCell(playerNum, row, col, board.getCell(row, col), "");
+            
+            // Track momentum for question attempt (whether attempting or passing)
+            if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+                gameManager.awardSafeCellWithMomentum();
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
+            }
+            
             switchTurn();
         });
         
@@ -643,6 +671,15 @@ public class GamePlayController {
             cell.setReadyForSurprise(false);
 
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
+            
+            // Track momentum for surprise attempt (passing counts toward streak)
+            if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+                gameManager.awardSafeCellWithMomentum();
+                gameBoardView.updateMomentumDisplay(
+                        gameManager.getConsecutiveSafeCells(),
+                        gameManager.getMomentumTierDescription()
+                );
+            }
 
             switchTurn();
         });
@@ -662,6 +699,11 @@ public class GamePlayController {
             cell.setSurprisePassed(false);
             cell.setReadyForSurprise(true);
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
+            
+            // Track momentum for surprise attempt (activating counts toward streak)
+            if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+                gameManager.awardSafeCellWithMomentum();
+            }
 
             // Capture open cost before deducting it
             int openCost = gameManager.getBaseOpenCost();
@@ -1169,6 +1211,15 @@ public class GamePlayController {
         if (!result.cellsRevealed.isEmpty()) {
             updateBoardDisplay(lastQuestionPlayer, currentBoard);
         }
+        
+        // Track momentum for question attempt (answering counts toward streak)
+        if (gameManager.getDifficulty() == Board.Difficulty.EXTREME) {
+            gameManager.awardSafeCellWithMomentum();
+            gameBoardView.updateMomentumDisplay(
+                    gameManager.getConsecutiveSafeCells(),
+                    gameManager.getMomentumTierDescription()
+            );
+        }
 
         gameBoardView.updateScore(gameManager.getScore());
         gameBoardView.updateLives(gameManager.getLives());
@@ -1530,7 +1581,8 @@ public class GamePlayController {
      * @param win true if players won, false if they lost
      */
     private void saveGameHistory(boolean win) {
-        if (gameManager == null) return;
+        if (gameManager == null || gameSaved) return;  // Prevent duplicate saves
+        gameSaved = true;
         
         long gameDurationSeconds = (System.currentTimeMillis() - gameStartTime) / 1000;
         

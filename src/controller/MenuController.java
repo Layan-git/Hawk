@@ -148,9 +148,9 @@ public class MenuController implements IMainMenuController {
             "Surprises: 50/50 random outcome - Gain or lose points and lives",
             "Metal Detector (5s, Max 3 uses): Reveals hidden mines. Crosshair turns red over mines, green over safe cells",
             "Safety Net (Max 3 uses): Protects from one mine hit. Use strategically to survive",
-            "Stabilizer (Auto, Max 1 use): Last life + mine = auto Hard question. Answer correctly to survive and disable mine",
-            "Momentum: Consecutive safe cell reveals build streaks. Tier 1 (5+ safe): +1 bonus point per safe cell. Tier 2 (15+ safe): +2 bonus points per safe cell.",
-            "Win: Reveal all cells on your board. Lose: All lives run out.",
+            "Stabilizer (EXTREME ONLY, Max 1 use): Hit mine on last life? Answer a HARD question to disable it. Correct = survive, Incorrect = game over",
+            "Momentum (EXTREME ONLY): Consecutive safe cell reveals build streaks. Every cell interaction counts. Tier 1 (5+ cells): +1 bonus. Tier 2 (15+ cells): +2 bonus",
+            "Win: Reveal all cells on your board. Lose: All lives run out",
             "Cooperative Play: Both players share lives and score. Work together to complete both boards before lives run out"
         };
         

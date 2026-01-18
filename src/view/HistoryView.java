@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
-
 import model.History;
 import model.SysData;
 
@@ -106,7 +105,7 @@ public class HistoryView {
 
     private List<History> allHistories = new ArrayList<>();  // Store all histories for filtering
     private JCheckBox winFilter, loseFilter;
-    private JCheckBox easyFilter, mediumFilter, hardFilter;
+    private JCheckBox easyFilter, mediumFilter, hardFilter, extremeFilter;
     
     // Sort variables
     private String currentSortBy = "Date";  // Default sort
@@ -174,6 +173,14 @@ public class HistoryView {
         hardFilter.setAlignmentX(Component.LEFT_ALIGNMENT);
         hardFilter.addActionListener(e -> loadData());
         filterPanel.add(hardFilter);
+        
+        extremeFilter = new JCheckBox("Extreme");
+        extremeFilter.setOpaque(false);
+        extremeFilter.setForeground(new Color(200, 100, 255));
+        extremeFilter.setSelected(true);
+        extremeFilter.setAlignmentX(Component.LEFT_ALIGNMENT);
+        extremeFilter.addActionListener(e -> loadData());
+        filterPanel.add(extremeFilter);
         
         return filterPanel;
     }
@@ -258,7 +265,8 @@ public class HistoryView {
             String difficulty = h.getDifficulty().toLowerCase();
             boolean diffMatches = (difficulty.equals("easy") && easyFilter.isSelected()) ||
                                  (difficulty.equals("medium") && mediumFilter.isSelected()) ||
-                                 (difficulty.equals("hard") && hardFilter.isSelected());
+                                 (difficulty.equals("hard") && hardFilter.isSelected()) ||
+                                 (difficulty.equals("extreme") && extremeFilter.isSelected());
             if (!diffMatches) continue;
             
             filteredHistories.add(h);
@@ -340,6 +348,7 @@ public class HistoryView {
             case "easy" -> new Color(100, 200, 255);
             case "medium" -> new Color(255, 200, 100);
             case "hard" -> new Color(255, 100, 100);
+            case "extreme" -> new Color(200, 100, 255);
             default -> Color.WHITE;
         };
         
@@ -438,6 +447,7 @@ public class HistoryView {
             case "easy" -> 1;
             case "medium" -> 2;
             case "hard" -> 3;
+            case "extreme" -> 4;
             default -> 0;
         };
     }

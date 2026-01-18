@@ -77,6 +77,7 @@ public class GameManger {
             case EASY -> scoringStrategy = new EasyScoringStrategy();
             case MEDIUM -> scoringStrategy = new MediumScoringStrategy();
             case HARD -> scoringStrategy = new HardScoringStrategy();
+            case EXTREME -> scoringStrategy = new ExtremeScoringStrategy();
             default -> scoringStrategy = new EasyScoringStrategy(); // default to easy
         }
         
@@ -89,6 +90,7 @@ public class GameManger {
             case EASY -> maxLives = 10;   // easy starts with 10 hearts
             case MEDIUM -> maxLives = 8;  // medium: 8 hearts
             case HARD -> maxLives = 6;    // hard: 6 hearts
+            case EXTREME -> maxLives = 6; // extreme: 6 hearts (same as hard)
         }
     }
 
@@ -212,6 +214,14 @@ public class GameManger {
                     case 2 -> processHardGameMediumQuestion(isCorrect);
                     case 3 -> processHardGameHardQuestion(isCorrect);
                     case 4 -> processHardGameAdvancedQuestion(isCorrect);
+                    default -> new QuestionResult(isCorrect, 0, 0, "Unknown question type");
+                };
+            case EXTREME -> // EXTREME GAME MODE RULES
+                switch (currentQuestionDifficulty) {
+                    case 1 -> processExtremeGameEasyQuestion(isCorrect);
+                    case 2 -> processExtremeGameMediumQuestion(isCorrect);
+                    case 3 -> processExtremeGameHardQuestion(isCorrect);
+                    case 4 -> processExtremeGameAdvancedQuestion(isCorrect);
                     default -> new QuestionResult(isCorrect, 0, 0, "Unknown question type");
                 };
         };
@@ -427,6 +437,81 @@ public class GameManger {
             return new QuestionResult(false, -40, -3, "Incorrect! Lost 40 points & 3 lives");
         }
     }
+
+    // ========== EXTREME GAME MODE METHODS ==========
+    // EXTREME GAME MODE - Easy Question: Correct: +10pts & +1life | Incorrect: -10pts & -1life (same as hard)
+    private QuestionResult processExtremeGameEasyQuestion(boolean isCorrect) {
+        if (isCorrect) {
+            addPoints(10);
+            gainLifeOrPoints();
+            return new QuestionResult(true, 10, 1, "Correct! +10 points & +1 life");
+        } else {
+            addPoints(-10);
+            loseLife();
+            return new QuestionResult(false, -10, -1, "Incorrect! Lost 10 points & 1 life");
+        }
+    }
+
+    // EXTREME GAME MODE - Medium Question: Correct: (+1life & +15pts) OR (+15points & +2lifes) (50/50) | Incorrect: (-15pts & -1life) OR (-15pts & -2lifes) (50/50) (same as hard)
+    private QuestionResult processExtremeGameMediumQuestion(boolean isCorrect) {
+        if (isCorrect) {
+            // 50/50 chance: either (+1 life & +15 pts) or (+15 pts & +2 lifes)
+            if (random.nextBoolean()) {
+                addPoints(15);
+                gainLifeOrPoints();
+                return new QuestionResult(true, 15, 1, "Correct! +15 points & +1 life");
+            } else {
+                addPoints(15);
+                gainLife();
+                gainLife();
+                return new QuestionResult(true, 15, 2, "Correct! +15 points & +2 lives");
+            }
+        } else {
+            // 50/50 chance: either (-15 pts & -1 life) or (-15 pts & -2 lifes)
+            addPoints(-15);
+            if (random.nextBoolean()) {
+                loseLife();
+                return new QuestionResult(false, -15, -1, "Incorrect! Lost 15 points & 1 life");
+            } else {
+                loseLife();
+                loseLife();
+                return new QuestionResult(false, -15, -2, "Incorrect! Lost 15 points & 2 lives");
+            }
+        }
+    }
+
+    // EXTREME GAME MODE - Hard Question: Correct: +2lifes & +20pts | Incorrect: -20pts & -2lifes (same as hard)
+    private QuestionResult processExtremeGameHardQuestion(boolean isCorrect) {
+        if (isCorrect) {
+            addPoints(20);
+            gainLife();
+            gainLife();
+            return new QuestionResult(true, 20, 2, "Correct! +20 points & +2 lives");
+        } else {
+            addPoints(-20);
+            loseLife();
+            loseLife();
+            return new QuestionResult(false, -20, -2, "Incorrect! Lost 20 points & 2 lives");
+        }
+    }
+
+    // EXTREME GAME MODE - Advanced Question: Correct: +3lifes & +40pts | Incorrect: -40pts & -3lifes (same as hard)
+    private QuestionResult processExtremeGameAdvancedQuestion(boolean isCorrect) {
+        if (isCorrect) {
+            addPoints(40);
+            gainLife();
+            gainLife();
+            gainLife();
+            return new QuestionResult(true, 40, 3, "Correct! +40 points & +3 lives");
+        } else {
+            addPoints(-40);
+            loseLife();
+            loseLife();
+            loseLife();
+            return new QuestionResult(false, -40, -3, "Incorrect! Lost 40 points & 3 lives");
+        }
+    }
+
     private int[] openRandomMine() {
         if (board == null) return null;
 
@@ -624,6 +709,13 @@ public class GameManger {
         addPoints(totalPoints);
         
         return totalPoints; // return for UI display
+    }
+    
+    // Called when a safe cell is clicked (without momentum) - for non-EXTREME difficulties
+    public int awardSafeCell() {
+        int basePoints = scoringStrategy.pointsForSafeCell();
+        addPoints(basePoints);
+        return basePoints;
     }
     
     // Called when a mine is clicked - resets multiplier

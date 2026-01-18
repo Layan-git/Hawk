@@ -43,7 +43,7 @@ public class HistoryManager {
                 Files.write(filePath, CSV_HEADER.getBytes());
             }
         } catch (IOException e) {
-            System.err.println("Error initializing History CSV: " + e.getMessage());
+            // Error initializing CSV silently ignored
         }
     }
     
@@ -57,14 +57,11 @@ public class HistoryManager {
             String csvPath = getHistoryCSVPath();
             Path filePath = Paths.get(csvPath);
             
-            System.out.println("Writing history to: " + filePath.toAbsolutePath());
-            
             // Ensure parent directory exists
             Files.createDirectories(filePath.getParent());
             
             // Ensure file exists before appending
             if (!Files.exists(filePath)) {
-                System.out.println("History file does not exist, creating with header...");
                 Files.write(filePath, CSV_HEADER.getBytes());
             }
             
@@ -74,7 +71,6 @@ public class HistoryManager {
                     (csvLine + "\n").getBytes(),
                     StandardOpenOption.APPEND
             );
-            System.out.println("History saved successfully!");
         } catch (IOException e) {
             System.err.println("Error writing history to CSV: " + e.getMessage());
             e.printStackTrace();
@@ -83,18 +79,12 @@ public class HistoryManager {
     
     /**
      * Read all game histories from the CSV file.
-     * First tries to load from bundled History.csv in JAR, then falls back to user directory.
+     * Only loads from user directory to avoid duplicates from bundled history.
      */
     public static List<History> readAllHistories() {
         List<History> histories = new ArrayList<>();
         
-        // First try to load from classpath (bundled History.csv in JAR)
-        InputStream csvStream = ResourceLoader.getResourceAsStream("/csvFiles/History.csv");
-        if (csvStream != null) {
-            loadHistoriesFromStream(csvStream, histories);
-        }
-        
-        // Then load from user directory (writable location)
+        // Load from user directory (writable location where new games are saved)
         try {
             String csvPath = getHistoryCSVPath();
             Path filePath = Paths.get(csvPath);
@@ -105,13 +95,13 @@ public class HistoryManager {
                 // Skip header row
                 for (int i = 1; i < lines.size(); i++) {
                     History history = parseCSVLine(lines.get(i));
-                    if (history != null && !histories.contains(history)) {
+                    if (history != null) {
                         histories.add(history);
                     }
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error reading history from CSV: " + e.getMessage());
+            // Error reading history silently ignored
         }
         
         return histories;
@@ -136,7 +126,7 @@ public class HistoryManager {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error loading histories from stream: " + e.getMessage());
+            // Error loading histories silently ignored
         }
     }
     
@@ -229,7 +219,7 @@ public class HistoryManager {
             
             return history;
         } catch (Exception e) {
-            System.err.println("Error parsing CSV line: " + line + " - " + e.getMessage());
+            // Error parsing line silently ignored
             return null;
         }
     }

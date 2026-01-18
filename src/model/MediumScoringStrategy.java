@@ -8,7 +8,7 @@ public class MediumScoringStrategy implements ScoringStrategy {
 
     @Override
     public int pointsForSafeCell() {
-        return 2; // 2 points for revealing a safe cell in medium mode
+        return 1; // 1 point for revealing a safe cell in medium mode (momentum bonuses only for EXTREME)
     }
 
     @Override

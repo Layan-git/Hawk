@@ -71,8 +71,9 @@ public class LoginView {
         userField.setBounds(50, 120, 350, 40);
         userField.setOpaque(false);
         userField.setBorder(BorderFactory.createLineBorder(new Color(0, 102, 51), 2));
-        userField.setForeground(new Color(220, 235, 230));
-        userField.setCaretColor(new Color(220, 235, 230));
+        userField.setForeground(Color.WHITE);
+        userField.setCaretColor(Color.WHITE);
+        userField.setFont(new Font("Tahoma", Font.PLAIN, 18));
         card.add(userField);
 
         // Password label
@@ -87,8 +88,9 @@ public class LoginView {
         passField.setBounds(50, 200, 350, 40);
         passField.setOpaque(false);
         passField.setBorder(BorderFactory.createLineBorder(new Color(0, 102, 51), 2));
-        passField.setForeground(new Color(220, 235, 230));
-        passField.setCaretColor(new Color(220, 235, 230));
+        passField.setForeground(Color.WHITE);
+        passField.setCaretColor(Color.WHITE);
+        passField.setFont(new Font("Tahoma", Font.PLAIN, 18));
         card.add(passField);
 
         // Buttons
