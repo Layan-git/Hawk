@@ -143,6 +143,7 @@ public class GamePlayController {
         gameBoardView.setMaxLives(gameManager.getMaxLives());
         gameBoardView.updateScore(gameManager.getScore());
         gameBoardView.updateLives(gameManager.getLives());
+        gameBoardView.updateFlagsRemaining(gameManager.getFlagsRemaining());
         gameBoardView.updateMinesLeft(1, board1.getHiddenMineCount());
         gameBoardView.updateMinesLeft(2, board2.getHiddenMineCount());
         gameBoardView.updateShopButtons(gameManager.getScore(), 
@@ -446,20 +447,24 @@ public class GamePlayController {
         
         // Only allow flagging hidden cells
         if (cell.isFlagged()) {
-            // Unflag if already flagged
+            // Unflag if already flagged (doesn't use a flag)
             cell.setState(CellState.HIDDEN);
             gameBoardView.updateCell(playerNum, row, col, cell, cell.getDisplayLabel());
             // Unflagging is a move, so switch turn
             switchTurn();
             return;
         } else if (cell.isHidden()) {
-            // Check if player has enough points to flag (flagging costs points)
-            if (gameManager.getScore() <= 0) {
-                showStyledErrorDialog("Insufficient Points",
-                        "You cannot flag cells without points.\nEarn more points first!",
-                        "/resources/gears.png");
+            // Check if player has flags remaining
+            if (!gameManager.isFlagsAvailable()) {
+                showStyledErrorDialog("No Flags Remaining",
+                        "You have run out of flags!\nYou cannot flag any more cells.",
+                        "/resources/falg.png");
                 return;
             }
+            
+            // Deduct a flag
+            gameManager.deductFlag();
+            gameBoardView.updateFlagsRemaining(gameManager.getFlagsRemaining());
             
             // Flag the cell
             cell.setState(CellState.FLAGGED);

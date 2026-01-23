@@ -141,18 +141,18 @@ public class Settings {
             playSecretAnimation();
         });
 
-        // Image button (top right)
-        JButton imageBtn = new JButton();
-        imageBtn.setBounds(W - 70, 10, 60, 20);
-        bg.add(imageBtn);
-        imageBtn.setForeground(Color.WHITE);
-        imageBtn.setBackground(new Color(50, 150, 100, 80));
-        imageBtn.setOpaque(true);
-        imageBtn.setFocusPainted(false);
-        imageBtn.setBorder(BorderFactory.createLineBorder(new Color(100, 200, 150, 100), 1));
-        imageBtn.addActionListener(e -> {
-            openImageDialog();
-        });
+        // Image button (top right) - REMOVED
+        // JButton imageBtn = new JButton();
+        // imageBtn.setBounds(W - 70, 10, 60, 20);
+        // bg.add(imageBtn);
+        // imageBtn.setForeground(Color.WHITE);
+        // imageBtn.setBackground(new Color(50, 150, 100, 80));
+        // imageBtn.setOpaque(true);
+        // imageBtn.setFocusPainted(false);
+        // imageBtn.setBorder(BorderFactory.createLineBorder(new Color(100, 200, 150, 100), 1));
+        // imageBtn.addActionListener(e -> {
+        //     openImageDialog();
+        // });
 
         // Back button
         JButton backBtn = new JButton("Back");

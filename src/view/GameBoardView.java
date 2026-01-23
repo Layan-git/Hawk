@@ -28,6 +28,7 @@ public class GameBoardView implements GameObserver {
     private JPanel boardPanel1;
     private JPanel boardPanel2;
     private JPanel infoPanelRef;  // Reference to info panel for border updates
+    private JPanel centerSidebarPanelRef;  // Reference to sidebar panel for border updates
 
     private final JButton[][] cellButtons1;
     private final JButton[][] cellButtons2;
@@ -52,6 +53,7 @@ public class GameBoardView implements GameObserver {
     private JButton safetyNetButton;
     private JButton metalDetectorButton;
     private JLabel momentumLabel;
+    private JLabel tierIconLabel;  // For tier1-3 icons based on momentum
     private JPanel momentumPanel;
     private JPanel shopPanel;
     private JLabel shopStatusLabel;
@@ -71,6 +73,7 @@ public class GameBoardView implements GameObserver {
     private JLabel stabilizerLabel;
     private JButton stabilizerBtnRef;
     private BufferedImage stabilizerIcon;
+    private JLabel flagsRemainingLabel;
     private static final int CHARACTER_DISPLAY_SIZE = 40;
     
     // Store board references for metal detector
@@ -160,7 +163,7 @@ public class GameBoardView implements GameObserver {
 
     private void initialize(String p1Name, String p2Name) {
         frame = new JFrame("Minesweeper - Two Player Game");
-        frame.setSize(1600, 900);
+        frame.setSize(1800, 900);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout(0, 0));
         // set app icon for taskbar and window
@@ -222,7 +225,7 @@ public class GameBoardView implements GameObserver {
         p1CharHeaderPanel.add(player1CharLabel);
         centerPanel.add(p1CharHeaderPanel, gbc);
 
-        gbc.gridx = 1;
+        gbc.gridx = 2;
         JPanel p2CharHeaderPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
         p2CharHeaderPanel.setOpaque(false);
         player2CharLabel = new JLabel();
@@ -293,9 +296,138 @@ public class GameBoardView implements GameObserver {
         initializeBoardButtons(boardPanel1, cellButtons1, 1);
         centerPanel.add(player1Container, gbc);
 
-        // Player 2 board + labels (same layout on right side)
+        // Center sidebar panel with control buttons (between the two boards)
         gbc.gridx = 1;
         gbc.gridy = 1;
+        gbc.weightx = 0.0;  // Don't expand sidebar
+        gbc.insets = new Insets(0, 20, 0, 20);  // Equal padding on both sides
+        
+        JPanel centerSidebarPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                // Don't paint background - make it transparent
+                super.paintComponent(g);
+            }
+        };
+        centerSidebarPanel.setLayout(new BoxLayout(centerSidebarPanel, BoxLayout.Y_AXIS));
+        centerSidebarPanel.setOpaque(false);
+        centerSidebarPanel.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(0, 200, 255), 3, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)  // Reduced top/bottom padding from 10 to 5
+        ));
+        centerSidebarPanel.setPreferredSize(new Dimension(80, 0));
+        centerSidebarPanelRef = centerSidebarPanel;  // Store reference for border updates
+
+        // Pause button in center sidebar
+        JButton sidebarPauseBtn = new JButton("Pause");
+        if (pauseIcon != null) {
+            Image scaledPauseIcon = pauseIcon.getScaledInstance(24, 24, Image.SCALE_SMOOTH);
+            sidebarPauseBtn.setIcon(new ImageIcon(scaledPauseIcon));
+        }
+        sidebarPauseBtn.setFont(new Font("Tahoma", Font.BOLD, 10));
+        sidebarPauseBtn.setForeground(new Color(220, 235, 230));
+        sidebarPauseBtn.setBackground(new Color(100, 60, 40));
+        sidebarPauseBtn.setVerticalTextPosition(SwingConstants.BOTTOM);
+        sidebarPauseBtn.setHorizontalTextPosition(SwingConstants.CENTER);
+        sidebarPauseBtn.setFocusPainted(false);
+        sidebarPauseBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sidebarPauseBtn.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(150, 100, 80), 2, true),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
+        sidebarPauseBtn.setPreferredSize(new Dimension(60, 55));
+        sidebarPauseBtn.setMaximumSize(new Dimension(60, 55));
+        sidebarPauseBtn.addActionListener(e -> controller.pauseGame());
+        centerSidebarPanel.add(sidebarPauseBtn);
+        centerSidebarPanel.add(Box.createVerticalStrut(15));
+
+        // Exit button in center sidebar
+        JButton sidebarExitBtn = new JButton("Exit");
+        if (exitIcon != null) {
+            Image scaledExitIcon = exitIcon.getScaledInstance(24, 24, Image.SCALE_SMOOTH);
+            sidebarExitBtn.setIcon(new ImageIcon(scaledExitIcon));
+        }
+        sidebarExitBtn.setFont(new Font("Tahoma", Font.BOLD, 10));
+        sidebarExitBtn.setForeground(new Color(220, 235, 230));
+        sidebarExitBtn.setBackground(new Color(100, 40, 40));
+        sidebarExitBtn.setVerticalTextPosition(SwingConstants.BOTTOM);
+        sidebarExitBtn.setHorizontalTextPosition(SwingConstants.CENTER);
+        sidebarExitBtn.setFocusPainted(false);
+        sidebarExitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sidebarExitBtn.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(150, 80, 80), 2, true),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
+        sidebarExitBtn.setPreferredSize(new Dimension(60, 55));
+        sidebarExitBtn.setMaximumSize(new Dimension(60, 55));
+        sidebarExitBtn.addActionListener(e -> controller.quitToMenu());
+        centerSidebarPanel.add(sidebarExitBtn);
+        centerSidebarPanel.add(Box.createVerticalStrut(20));  // Space before stabilizer
+
+        // Stabilizer button in center sidebar (bottom - doesn't appear in all difficulties)
+        JButton sidebarStabilizerBtn = new JButton();
+        if (stabilizerIcon != null) {
+            Image scaledStabilizer = stabilizerIcon.getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+            sidebarStabilizerBtn.setIcon(new ImageIcon(scaledStabilizer));
+        }
+        sidebarStabilizerBtn.setPreferredSize(new Dimension(60, 50));
+        sidebarStabilizerBtn.setMaximumSize(new Dimension(60, 50));
+        sidebarStabilizerBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sidebarStabilizerBtn.setBorderPainted(true);
+        sidebarStabilizerBtn.setBorder(new LineBorder(new Color(100, 200, 200), 2, true));
+        sidebarStabilizerBtn.setContentAreaFilled(false);
+        sidebarStabilizerBtn.setFocusPainted(false);
+        sidebarStabilizerBtn.setVisible(false);
+        sidebarStabilizerBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        sidebarStabilizerBtn.addActionListener(e -> showStabilizerInfoDialog());
+        stabilizerBtnRef = sidebarStabilizerBtn;
+        centerSidebarPanel.add(sidebarStabilizerBtn);
+        centerSidebarPanel.add(Box.createVerticalStrut(20));  // Space before flags display
+        
+        // Flags remaining display
+        JPanel flagsPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+            }
+        };
+        flagsPanel.setLayout(new BoxLayout(flagsPanel, BoxLayout.Y_AXIS));
+        flagsPanel.setOpaque(false);
+        flagsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        flagsPanel.setMaximumSize(new Dimension(70, 70));
+        
+        // Flag icon
+        JButton flagIconBtn = new JButton();
+        if (flagIcon != null) {
+            Image scaledFlagIcon = flagIcon.getScaledInstance(35, 35, Image.SCALE_SMOOTH);
+            flagIconBtn.setIcon(new ImageIcon(scaledFlagIcon));
+        }
+        flagIconBtn.setPreferredSize(new Dimension(50, 40));
+        flagIconBtn.setMaximumSize(new Dimension(50, 40));
+        flagIconBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        flagIconBtn.setContentAreaFilled(false);
+        flagIconBtn.setBorderPainted(false);
+        flagIconBtn.setFocusPainted(false);
+        flagIconBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        flagIconBtn.setEnabled(false);
+        flagsPanel.add(flagIconBtn);
+        
+        // Flags remaining label
+        flagsRemainingLabel = new JLabel("Flags: 0");
+        flagsRemainingLabel.setFont(new Font("Tahoma", Font.BOLD, 11));
+        flagsRemainingLabel.setForeground(Color.WHITE);
+        flagsRemainingLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        flagsPanel.add(flagsRemainingLabel);
+        
+        centerSidebarPanel.add(flagsPanel);
+        
+        centerPanel.add(centerSidebarPanel, gbc);
+
+        // Player 2 board + labels (same layout on right side)
+        gbc.gridx = 2;
+        gbc.gridy = 1;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 10, 0, 10);
         player2Container = new JPanel(new BorderLayout(0, 8));
         player2Container.setOpaque(false);
         player2Container.setFocusable(false);
@@ -374,14 +506,14 @@ public class GameBoardView implements GameObserver {
         momentumPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         momentumPanel.setOpaque(false);
         
-        // Add electric bolt icon
-        JLabel boltIconLabel = new JLabel();
-        java.awt.image.BufferedImage boltIcon = model.ResourceLoader.loadImage("/resources/electric_bolt.png");
-        if (boltIcon != null) {
-            Image scaledBolt = boltIcon.getScaledInstance(32, 32, Image.SCALE_SMOOTH);
-            boltIconLabel.setIcon(new ImageIcon(scaledBolt));
+        // Add tier icon (tier1-3.png based on momentum)
+        tierIconLabel = new JLabel();
+        java.awt.image.BufferedImage tierIcon = model.ResourceLoader.loadImage("/resources/tier1.png");
+        if (tierIcon != null) {
+            Image scaledTier = tierIcon.getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+            tierIconLabel.setIcon(new ImageIcon(scaledTier));
         }
-        momentumPanel.add(boltIconLabel);
+        momentumPanel.add(tierIconLabel);
         
         JLabel momentumTitle = new JLabel("Momentum:");
         momentumTitle.setFont(new Font("Tahoma", Font.BOLD, 18));
@@ -474,39 +606,57 @@ public class GameBoardView implements GameObserver {
             }
         };
 
-        panel.setLayout(new FlowLayout(FlowLayout.CENTER, 50, 20));
+        // Use GridBagLayout for better centering control
+        GridBagLayout gbl = new GridBagLayout();
+        panel.setLayout(gbl);
         panel.setOpaque(false);
         panel.setPreferredSize(new Dimension(1000, 90));
         panel.setBorder(new LineBorder(new Color(0, 200, 255), 3, true));
         infoPanelRef = panel;  // Store reference for later border updates
 
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weighty = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;  // Center items vertically
+
+        // Score panel - LEFT
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0.35;
+        gbc.insets = new Insets(0, 0, 0, 0);
         JPanel scorePanel = createInfoItem("Score:", "0", new Color(0, 255, 128));
         scoreLabel = (JLabel) scorePanel.getComponent(1);
-        panel.add(scorePanel);
+        panel.add(scorePanel, gbc);
 
-        // Lives panel with icons instead of text
-        JPanel livesPanelWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        // Lives panel - MIDDLE
+        gbc.gridx = 1;
+        gbc.weightx = 0.0;
+        gbc.insets = new Insets(0, 5, 0, 5);  // Closer spacing
+        JPanel livesPanelWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 0));
         livesPanelWrapper.setOpaque(false);
         JLabel livesTitle = new JLabel("Lives:");
         livesTitle.setFont(new Font("Tahoma", Font.BOLD, 16));
         livesTitle.setForeground(new Color(100, 255, 100));
         livesPanelWrapper.add(livesTitle);
         
-        livesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        livesPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
         livesPanel.setOpaque(false);
         livesPanelWrapper.add(livesPanel);
-        panel.add(livesPanelWrapper);
+        panel.add(livesPanelWrapper, gbc);
 
-        // Timer label
+        // Timer label - RIGHT
+        gbc.gridx = 2;
+        gbc.weightx = 0.35;
+        gbc.insets = new Insets(0, 5, 0, 0);  // Closer spacing
         timerLabel = new JLabel("Time: 0:00");
         timerLabel.setFont(new Font("Tahoma", Font.BOLD, 22));
         timerLabel.setForeground(new Color(0, 200, 255));
-        panel.add(timerLabel);
+        panel.add(timerLabel, gbc);
         
-        // Add separator
-        panel.add(Box.createHorizontalStrut(30));
-        
-        // Stabilizer icon display as button
+        // Stabilizer icon display as button - right center with equal weight
+        gbc.gridx = 3;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 10, 0, 10);
         JButton stabilizerBtn = new JButton();
         if (stabilizerIcon != null) {
             Image scaledStabilizer = stabilizerIcon.getScaledInstance(CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE, Image.SCALE_SMOOTH);
@@ -521,47 +671,10 @@ public class GameBoardView implements GameObserver {
         stabilizerBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         stabilizerBtn.addActionListener(e -> showStabilizerInfoDialog());
         stabilizerLabel = new JLabel();  // Keep for compatibility with other methods
-        panel.add(stabilizerBtn);
+        panel.add(stabilizerBtn, gbc);
         
         // Store button reference for state updates
         stabilizerBtnRef = stabilizerBtn;
-        
-        // Add separator
-        panel.add(Box.createHorizontalStrut(10));
-        
-        // Pause button
-        JButton pauseBtn = new JButton("Pause");
-        if (pauseIcon != null) {
-            Image scaledPauseIcon = pauseIcon.getScaledInstance(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE, Image.SCALE_SMOOTH);
-            pauseBtn.setIcon(new ImageIcon(scaledPauseIcon));
-        }
-        pauseBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
-        pauseBtn.setForeground(new Color(220, 235, 230));
-        pauseBtn.setBackground(new Color(100, 60, 40));
-        pauseBtn.setFocusPainted(false);
-        pauseBtn.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(150, 100, 80), 2, true),
-                BorderFactory.createEmptyBorder(5, 15, 5, 15)
-        ));
-        pauseBtn.addActionListener(e -> controller.pauseGame());
-        panel.add(pauseBtn);
-        
-        // Exit button
-        JButton exitBtn = new JButton("Exit");
-        if (exitIcon != null) {
-            Image scaledExitIcon = exitIcon.getScaledInstance(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE, Image.SCALE_SMOOTH);
-            exitBtn.setIcon(new ImageIcon(scaledExitIcon));
-        }
-        exitBtn.setFont(new Font("Tahoma", Font.BOLD, 12));
-        exitBtn.setForeground(new Color(220, 235, 230));
-        exitBtn.setBackground(new Color(100, 40, 40));
-        exitBtn.setFocusPainted(false);
-        exitBtn.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(150, 80, 80), 2, true),
-                BorderFactory.createEmptyBorder(5, 15, 5, 15)
-        ));
-        exitBtn.addActionListener(e -> controller.quitToMenu());
-        panel.add(exitBtn);
 
         return panel;
     }
@@ -1033,6 +1146,10 @@ public class GameBoardView implements GameObserver {
         this.maxLives = maxLives;
     }
 
+    public void updateFlagsRemaining(int flags) {
+        flagsRemainingLabel.setText("Flags: " + flags);
+    }
+
     public void updateStatus(String status) {
         statusLabel.setText(status);
     }
@@ -1079,8 +1196,38 @@ public class GameBoardView implements GameObserver {
         if (board1 != null && board1.getDifficulty() == model.Board.Difficulty.EXTREME) {
             momentumLabel.setText(streak + " streak - " + tierDescription);
             momentumLabel.setVisible(true);
+            
+            // Update tier icon based on momentum tier
+            // Determine which tier based on consecutive safe cells count (streak)
+            int tierLevel = 1;  // Default to tier1
+            if (streak >= 15) {
+                tierLevel = 3;  // Tier 2 (using tier3.png for Tier 2)
+            } else if (streak >= 5) {
+                tierLevel = 2;  // Tier 1 (using tier2.png for Tier 1)
+            } else {
+                tierLevel = 1;  // No tier (tier1.png)
+            }
+            
+            // Load and set the appropriate tier icon
+            java.awt.image.BufferedImage tierIcon = model.ResourceLoader.loadImage("/resources/tier" + tierLevel + ".png");
+            if (tierIcon != null && tierIconLabel != null) {
+                Image scaledTier = tierIcon.getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+                tierIconLabel.setIcon(new ImageIcon(scaledTier));
+                tierIconLabel.repaint();  // Force repaint to ensure icon updates
+            }
         } else if (momentumLabel != null) {
             momentumLabel.setVisible(false);
+        }
+    }
+    
+    // Reset momentum tier icon to tier1 when a mine is hit
+    public void resetMomentumTierIcon() {
+        if (tierIconLabel != null) {
+            java.awt.image.BufferedImage tierIcon = model.ResourceLoader.loadImage("/resources/tier1.png");
+            if (tierIcon != null) {
+                Image scaledTier = tierIcon.getScaledInstance(40, 40, Image.SCALE_SMOOTH);
+                tierIconLabel.setIcon(new ImageIcon(scaledTier));
+            }
         }
     }
     
@@ -1191,6 +1338,12 @@ public class GameBoardView implements GameObserver {
             }
             if (infoPanelRef != null) {
                 infoPanelRef.setBorder(new LineBorder(borderColor, 3, true));
+            }
+            if (centerSidebarPanelRef != null) {
+                centerSidebarPanelRef.setBorder(BorderFactory.createCompoundBorder(
+                        new LineBorder(borderColor, 3, true),
+                        BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                ));
             }
         }
     }

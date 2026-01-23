@@ -3,7 +3,6 @@ package view;
 import java.awt.*;
 import java.util.List;
 import javax.swing.*;
-
 import model.Questions;
 import model.ResourceLoader;
 import model.SysData;

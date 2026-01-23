@@ -79,29 +79,79 @@ public class HistoryManager {
     
     /**
      * Read all game histories from the CSV file.
-     * Only loads from user directory to avoid duplicates from bundled history.
+     * Loads from:
+     * 1. Bundled classpath resources (src/csvFiles/History.csv in dev, JAR resources in production)
+     * 2. User directory (writable location where new games are saved)
      */
     public static List<History> readAllHistories() {
         List<History> histories = new ArrayList<>();
         
-        // Load from user directory (writable location where new games are saved)
+        // Priority 1: Try classpath resources (works in both IDE and JAR)
+        System.out.println("Attempting to load bundled history from classpath resources");
+        InputStream is = ResourceLoader.getResourceAsStream("/csvFiles/History.csv");
+        if (is != null) {
+            System.out.println("Found History.csv in classpath resources");
+            loadHistoriesFromStream(is, histories);
+            if (!histories.isEmpty()) {
+                System.out.println("Successfully loaded " + histories.size() + " histories from classpath");
+                return histories;
+            }
+        }
+        
+        // Priority 2: Load from development filesystem path (src/csvFiles)
+        System.out.println("Attempting to load history from development path");
         try {
             String csvPath = getHistoryCSVPath();
             Path filePath = Paths.get(csvPath);
+            System.out.println("Attempting to load history from: " + csvPath);
             
             if (Files.exists(filePath)) {
                 List<String> lines = Files.readAllLines(filePath);
+                System.out.println("Loading history file with " + lines.size() + " lines total");
                 
                 // Skip header row
                 for (int i = 1; i < lines.size(); i++) {
+                    System.out.println("Loading line " + i + ": " + lines.get(i));
                     History history = parseCSVLine(lines.get(i));
                     if (history != null) {
                         histories.add(history);
                     }
                 }
+                System.out.println("Successfully loaded " + histories.size() + " histories from filesystem");
+                return histories;
+            } else {
+                System.out.println("History file does not exist at: " + csvPath);
             }
         } catch (IOException e) {
-            // Error reading history silently ignored
+            System.err.println("Error reading history: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // Priority 3: Fallback to user directory (writable location for new games)
+        System.out.println("Attempting to load history from user directory");
+        try {
+            String userHome = System.getProperty("user.home");
+            String hawkDir = new File(userHome, ".hawk").getAbsolutePath();
+            Path userHistoryPath = Paths.get(new File(hawkDir, "History.csv").getAbsolutePath());
+            System.out.println("Attempting to load history from: " + userHistoryPath);
+            
+            if (Files.exists(userHistoryPath)) {
+                List<String> lines = Files.readAllLines(userHistoryPath);
+                System.out.println("Loading history file with " + lines.size() + " lines total");
+                
+                // Skip header row
+                for (int i = 1; i < lines.size(); i++) {
+                    System.out.println("Loading line " + i + ": " + lines.get(i));
+                    History history = parseCSVLine(lines.get(i));
+                    if (history != null) {
+                        histories.add(history);
+                    }
+                }
+                System.out.println("Successfully loaded " + histories.size() + " histories from user directory");
+                return histories;
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading history from user directory: " + e.getMessage());
         }
         
         return histories;
@@ -113,20 +163,29 @@ public class HistoryManager {
     private static void loadHistoriesFromStream(InputStream is, List<History> histories) {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             String line;
+            int lineCount = 0;
+            
+            System.out.println("Loading histories from InputStream (JAR resources)");
             
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty() || line.startsWith("DateTime,")) {
+                    System.out.println("Skipping header line: " + line);
                     continue; // Skip header
                 }
                 
+                lineCount++;
+                System.out.println("Loading line " + lineCount + ": " + line);
                 History history = parseCSVLine(line);
                 if (history != null) {
                     histories.add(history);
                 }
             }
+            
+            System.out.println("Finished loading " + lineCount + " history lines from InputStream");
         } catch (IOException e) {
-            // Error loading histories silently ignored
+            System.err.println("Error loading histories from stream: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     

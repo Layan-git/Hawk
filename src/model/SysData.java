@@ -25,6 +25,7 @@ public class SysData {
         // Initialize CSV_PATH to work in both IDE and JAR
         CSV_PATH = ResourceLoader.getCSVPath();
         initializeQuestions();
+        initializeHistory();
     }
 
     /**
@@ -71,6 +72,17 @@ public class SysData {
             System.out.println("Loading questions from CSV_PATH: " + CSV_PATH);
             loadQuestions(CSV_PATH);
         }
+    }
+
+    /**
+     * Initialize history loading with priority:
+     * 1. User home directory (game history saved during play)
+     * 2. JAR classpath (bundled history)
+     */
+    private static void initializeHistory() {
+        System.out.println("Initializing history...");
+        historyList.addAll(HistoryManager.readAllHistories());
+        System.out.println("History initialization complete. Total histories loaded: " + historyList.size());
     }
 
     // ---------------- Loading & Saving ----------------

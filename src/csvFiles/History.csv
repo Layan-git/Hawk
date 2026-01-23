@@ -91,3 +91,4 @@ DateTime,Player1,Player2,Username,Difficulty,Win,Score,Duration,MinesHit,Questio
 2026-01-18 20:11:10,Player 1,Player 2,player,MEDIUM,false,-77,30,3,2,0,2,2,0,2,0
 2026-01-18 20:13:41,Player 1,Player 2,player,HARD,false,-47,24,3,1,0,1,1,0,1,0
 2026-01-18 20:16:12,Player 1,Player 2,player,HARD,false,-4,60,6,1,0,1,5,4,1,0
+2026-01-18 20:38:49,Player 1,Player 2,player,EXTREME,false,-5,31,4,1,0,1,0,0,0,0

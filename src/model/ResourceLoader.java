@@ -119,57 +119,59 @@ public class ResourceLoader {
 
     /**
      * Get the absolute path to the CSV file (Questions.csv).
-     * For development, loads from src/csvFiles. For JAR, resources are loaded via InputStream.
+     * Priority: development src/csvFiles > user directory (for new questions)
      * 
      * @return Path to Questions.csv file
      */
     public static String getCSVPath() {
-        // First try the explicit src/csvFiles path for development
+        // Priority 1: Development mode - use src/csvFiles (bundled questions)
         String devPath = "src/csvFiles/Questions.csv";
         File devFile = new File(devPath);
         if (devFile.exists()) {
             return devFile.getAbsolutePath();
         }
         
-        // Try just csvFiles/Questions.csv (in case working directory is set to src)
+        // Priority 2: Try just csvFiles/Questions.csv (in case working directory is set to src)
         String altPath = "csvFiles/Questions.csv";
         File altFile = new File(altPath);
         if (altFile.exists()) {
             return altFile.getAbsolutePath();
         }
         
-        // Try resource path
+        // Priority 3: Try resource path
         String resourcePath = getResourcePath("/csvFiles/Questions.csv");
         if (resourcePath != null) {
             return resourcePath;
         }
         
-        // Fallback: use src/csvFiles/Questions.csv as default (works in IDE)
-        return new File("src/csvFiles/Questions.csv").getAbsolutePath();
+        // Priority 4: User home directory (fallback)
+        String userHome = System.getProperty("user.home");
+        String hawkDir = new File(userHome, ".hawk").getAbsolutePath();
+        return new File(hawkDir, "Questions.csv").getAbsolutePath();
     }
 
     /**
      * Get the absolute path to the History CSV file.
-     * In development, uses src/csvFiles. When running as JAR, stores in user's app data directory.
+     * Priority: development src/csvFiles > user directory (for new games)
      * 
      * @return Path to History.csv file
      */
     public static String getHistoryCSVPath() {
-        // First try the explicit src/csvFiles path for development
+        // Priority 1: Development mode - use src/csvFiles (bundled history)
         String devPath = "src/csvFiles/History.csv";
         File devFile = new File(devPath);
         if (devFile.exists()) {
             return devFile.getAbsolutePath();
         }
         
-        // Try just csvFiles/History.csv
+        // Priority 2: Try just csvFiles/History.csv (in case working directory is set to src)
         String altPath = "csvFiles/History.csv";
         File altFile = new File(altPath);
         if (altFile.exists()) {
             return altFile.getAbsolutePath();
         }
         
-        // For JAR deployment: use user home directory
+        // Priority 3: User home directory (writable location for new games, used in JAR)
         String userHome = System.getProperty("user.home");
         String hawkDir = new File(userHome, ".hawk").getAbsolutePath();
         return new File(hawkDir, "History.csv").getAbsolutePath();

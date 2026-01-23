@@ -66,6 +66,9 @@ public class GameManger {
     private long metalDetectorEndTime = 0;      // timestamp when detector expires
     private int safetyNetPurchases = 0;         // times purchased (max 3)
     private int metalDetectorPurchases = 0;     // times purchased (max 3)
+    
+    // Flag system
+    private int flagsRemaining = 0;             // tracks flags available for flagging cells
 
     // this is acting like an init method (not a real constructor) for now
     public void GameManager(Difficulty difficulty) {
@@ -100,6 +103,7 @@ public class GameManger {
         this.score = 0;
         this.lives = maxLives;
         this.status = GameStatus.RUNNING;
+        this.flagsRemaining = board.getTotalMines(); // Initialize flags equal to total mines
         notifyObservers(); // notify observers about initial state
     }
 
@@ -684,6 +688,17 @@ public class GameManger {
     public int getMaxLives() { return maxLives; }
     public GameStatus getStatus() { return status; }
     public Difficulty getDifficulty() { return difficulty; }
+    
+    // Flag system getters
+    public int getFlagsRemaining() { return flagsRemaining; }
+    
+    public boolean isFlagsAvailable() { return flagsRemaining > 0; }
+    
+    public void deductFlag() {
+        if (flagsRemaining > 0) {
+            flagsRemaining--;
+        }
+    }
     
     // -------------------------------
     // Momentum Multiplier Methods
