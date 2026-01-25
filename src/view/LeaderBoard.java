@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.*;
-
 import model.History;
 import model.SysData;
 
@@ -217,28 +216,60 @@ public class LeaderBoard {
 
         switch (sortType) {
             case 0: // Most Wins
-                players.sort((a, b) -> Integer.compare(b.wins, a.wins));
+                players.sort((a, b) -> {
+                    int winCompare = Integer.compare(b.wins, a.wins);
+                    if (winCompare != 0) return winCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 1: // Most Games Played
-                players.sort((a, b) -> Integer.compare(b.totalGames, a.totalGames));
+                players.sort((a, b) -> {
+                    int gamesCompare = Integer.compare(b.totalGames, a.totalGames);
+                    if (gamesCompare != 0) return gamesCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 2: // Highest Win Ratio
-                players.sort((a, b) -> Double.compare(b.getWinRatio(), a.getWinRatio()));
+                players.sort((a, b) -> {
+                    int ratioCompare = Double.compare(b.getWinRatio(), a.getWinRatio());
+                    if (ratioCompare != 0) return ratioCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 3: // Highest Average Score
-                players.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
+                players.sort((a, b) -> {
+                    int scoreCompare = Double.compare(b.getAverageScore(), a.getAverageScore());
+                    if (scoreCompare != 0) return scoreCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 4: // Total Time Played
-                players.sort((a, b) -> Long.compare(b.totalDurationSeconds, a.totalDurationSeconds));
+                players.sort((a, b) -> {
+                    int timeCompare = Long.compare(b.totalDurationSeconds, a.totalDurationSeconds);
+                    if (timeCompare != 0) return timeCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 5: // Highest Question Accuracy
-                players.sort((a, b) -> Double.compare(b.getQuestionAccuracy(), a.getQuestionAccuracy()));
+                players.sort((a, b) -> {
+                    int accuracyCompare = Double.compare(b.getQuestionAccuracy(), a.getQuestionAccuracy());
+                    if (accuracyCompare != 0) return accuracyCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             case 6: // Most Surprises Triggered
-                players.sort((a, b) -> Integer.compare(b.totalSurprises, a.totalSurprises));
+                players.sort((a, b) -> {
+                    int surpriseCompare = Integer.compare(b.totalSurprises, a.totalSurprises);
+                    if (surpriseCompare != 0) return surpriseCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
                 break;
             default:
-                players.sort((a, b) -> Integer.compare(b.wins, a.wins));
+                players.sort((a, b) -> {
+                    int winCompare = Integer.compare(b.wins, a.wins);
+                    if (winCompare != 0) return winCompare;
+                    return a.playerName.compareTo(b.playerName);
+                });
         }
 
         // Return top 5

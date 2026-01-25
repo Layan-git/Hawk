@@ -79,26 +79,23 @@ public class HistoryManager {
     
     /**
      * Read all game histories from the CSV file.
-     * Loads from:
+     * Loads from BOTH sources and merges:
      * 1. Bundled classpath resources (src/csvFiles/History.csv in dev, JAR resources in production)
      * 2. User directory (writable location where new games are saved)
      */
     public static List<History> readAllHistories() {
         List<History> histories = new ArrayList<>();
         
-        // Priority 1: Try classpath resources (works in both IDE and JAR)
+        // Load from classpath resources (bundled history) - works in both IDE and JAR
         System.out.println("Attempting to load bundled history from classpath resources");
         InputStream is = ResourceLoader.getResourceAsStream("/csvFiles/History.csv");
         if (is != null) {
             System.out.println("Found History.csv in classpath resources");
             loadHistoriesFromStream(is, histories);
-            if (!histories.isEmpty()) {
-                System.out.println("Successfully loaded " + histories.size() + " histories from classpath");
-                return histories;
-            }
+            System.out.println("Loaded " + histories.size() + " histories from classpath");
         }
         
-        // Priority 2: Load from development filesystem path (src/csvFiles)
+        // Also load from development filesystem path (src/csvFiles)
         System.out.println("Attempting to load history from development path");
         try {
             String csvPath = getHistoryCSVPath();
@@ -114,11 +111,13 @@ public class HistoryManager {
                     System.out.println("Loading line " + i + ": " + lines.get(i));
                     History history = parseCSVLine(lines.get(i));
                     if (history != null) {
-                        histories.add(history);
+                        // Check if already loaded from classpath to avoid duplicates
+                        if (!isDuplicateHistory(histories, history)) {
+                            histories.add(history);
+                        }
                     }
                 }
-                System.out.println("Successfully loaded " + histories.size() + " histories from filesystem");
-                return histories;
+                System.out.println("Loaded from filesystem. Total histories so far: " + histories.size());
             } else {
                 System.out.println("History file does not exist at: " + csvPath);
             }
@@ -127,7 +126,7 @@ public class HistoryManager {
             e.printStackTrace();
         }
         
-        // Priority 3: Fallback to user directory (writable location for new games)
+        // Also load from user directory (writable location for new games)
         System.out.println("Attempting to load history from user directory");
         try {
             String userHome = System.getProperty("user.home");
@@ -144,17 +143,38 @@ public class HistoryManager {
                     System.out.println("Loading line " + i + ": " + lines.get(i));
                     History history = parseCSVLine(lines.get(i));
                     if (history != null) {
-                        histories.add(history);
+                        // Check if already loaded from other source to avoid duplicates
+                        if (!isDuplicateHistory(histories, history)) {
+                            histories.add(history);
+                        }
                     }
                 }
-                System.out.println("Successfully loaded " + histories.size() + " histories from user directory");
-                return histories;
+                System.out.println("Loaded from user directory. Total histories: " + histories.size());
             }
         } catch (IOException e) {
             System.err.println("Error reading history from user directory: " + e.getMessage());
         }
         
+        System.out.println("History initialization complete. Total histories loaded: " + histories.size());
         return histories;
+    }
+    
+    /**
+     * Check if a history entry is already in the list (to avoid duplicates when loading from multiple sources)
+     */
+    private static boolean isDuplicateHistory(List<History> histories, History newHistory) {
+        for (History h : histories) {
+            // Consider it a duplicate if it has the same date, players, difficulty, and score
+            if (h.getDateTime() != null && newHistory.getDateTime() != null &&
+                h.getDateTime().equals(newHistory.getDateTime()) &&
+                h.getPlayer1Name() != null && h.getPlayer1Name().equals(newHistory.getPlayer1Name()) &&
+                h.getPlayer2Name() != null && h.getPlayer2Name().equals(newHistory.getPlayer2Name()) &&
+                h.getDifficulty() != null && h.getDifficulty().equals(newHistory.getDifficulty()) &&
+                h.getFinalScore() == newHistory.getFinalScore()) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
